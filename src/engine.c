@@ -102,7 +102,8 @@ static void setup_pieces(CfGame *g) {
 
 CfGame *cf_engine_new(const CfConfig *config) {
     CfGame *g = calloc(1, sizeof(*g));
-    char fields[256];
+    char fields[512];
+    int i;
     if (!g) return NULL;
     if (config) g->config = *config;
     if (g->config.team_count == 0) g->config.team_count = 2;
@@ -111,11 +112,24 @@ CfGame *cf_engine_new(const CfConfig *config) {
     setup_players(g);
     setup_pieces(g);
     cf_log_open(g);
-    snprintf(fields, sizeof(fields), "\"session_id\":\"%s\"", g->session_id);
+    snprintf(fields, sizeof(fields), "\"version\":\"0.2.0\",\"log_path\":\"%s\"", g->log_path);
     cf_log_event(g, "session_start", fields);
-    snprintf(fields, sizeof(fields), "\"team_count\":%d,\"time_travel\":%s,\"playable_squares\":%d",
+    snprintf(fields, sizeof(fields), "\"configured_team_count\":%d,\"time_travel\":%s,\"playable_squares\":%d",
              g->config.team_count, g->config.time_travel ? "true" : "false", cf_board_playable_count(&g->board));
     cf_log_event(g, "config", fields);
+    for (i = 0; i < g->config.team_count; i++) {
+        char name[CF_MAX_NAME * 2];
+        cf_json_escape(g->config.team_names[i], name, sizeof(name));
+        snprintf(fields, sizeof(fields), "\"team\":%d,\"name\":\"%s\"", i, name);
+        cf_log_event(g, "team_registered", fields);
+    }
+    for (i = 0; i < g->player_count; i++) {
+        char name[CF_MAX_NAME * 2];
+        cf_json_escape(g->players[i].name, name, sizeof(name));
+        snprintf(fields, sizeof(fields), "\"player_id\":%d,\"team\":%d,\"role\":\"%s\",\"name\":\"%s\"",
+                 g->players[i].player_id, g->players[i].team, g->players[i].role, name);
+        cf_log_event(g, "player_registered", fields);
+    }
     cf_engine_start_turn(g);
     return g;
 }
