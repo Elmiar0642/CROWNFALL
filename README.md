@@ -14,7 +14,11 @@ Output:
 ./bin/crownfall
 ```
 
+<<<<<<< HEAD
 GTK3 is required by default. The Makefile checks `pkg-config gtk+-3.0` and links the GUI build. For a CLI-only fallback build, use `make REQUIRE_GTK=0`.
+=======
+GTK3 is optional at compile time. If `pkg-config gtk+-3.0` is available, the GUI is compiled in. Without GTK3 development headers, the binary still builds and text mode works.
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 
 ## Run
 
@@ -22,6 +26,7 @@ GTK3 is required by default. The Makefile checks `pkg-config gtk+-3.0` and links
 ./bin/crownfall
 ```
 
+<<<<<<< HEAD
 The default launch opens the GTK/Glade GUI setup screen. Console setup is available explicitly:
 
 ```sh
@@ -30,6 +35,11 @@ The default launch opens the GTK/Glade GUI setup screen. Console setup is availa
 
 GUI startup collects:
 
+=======
+Startup asks for:
+
+- mode: `text` or `board-gui`
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 - team count: `2`, `4`, `6`, or `8`
 - time travel: `enable` or `disable`
 - team names
@@ -71,7 +81,11 @@ Snapshots are written to:
 logs/snapshots/latest.json
 ```
 
+<<<<<<< HEAD
 Each log line is a JSON event with timestamp, session id, mode, team count, current player, and event details. Implemented event emission includes session start/end, config, team/player registration, turn start, dice roll, legal move generation, move attempt/success, capture, Bloodfall, Widow Freeze, branch creation, and session end. Advanced rule events are represented as clean extension points.
+=======
+Each log line is a JSON event. Implemented event emission includes session start/end, config, turn start, dice roll, legal move generation, move attempt/success, capture, Bloodfall, Widow Freeze, branch creation, and session end. Advanced rule events are represented as clean extension points.
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 
 ## Implementation Notes
 
@@ -94,6 +108,10 @@ Each log line is a JSON event with timestamp, session id, mode, team count, curr
 - `src/log.c`, `src/log.h`: JSONL logging.
 - `src/replay.c`, `src/replay.h`: replay/time-travel stubs.
 - `src/api.c`, `src/api.h`, `include/crownfall_api.h`: future agent API.
+<<<<<<< HEAD
 - `src/gui.c`, `src/gui.h`, `ui/crownfall.glade`: GTK3 GUI setup and board shell.
+=======
+- `src/gui.c`, `src/gui.h`, `ui/crownfall.glade`: GTK3 GUI shell.
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 
 More detailed path/line/column anchors are in `docs/IMPLEMENTATION_INDEX.md`.

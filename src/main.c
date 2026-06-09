@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
         cf_engine_free(game);
         return 0;
     }
+<<<<<<< HEAD
     if (argc <= 1 || strcmp(argv[1], "--gui") == 0 || strcmp(argv[1], "board-gui") == 0) {
         return cf_gui_run(NULL, &argc, &argv);
     }
@@ -35,11 +36,22 @@ int main(int argc, char **argv) {
         cf_engine_free(game);
         return rc;
     }
+=======
+    cf_prompt_config(&config);
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     game = cf_engine_new(&config);
     if (!game) {
         fprintf(stderr, "Failed to create game.\n");
         return 1;
     }
+<<<<<<< HEAD
+=======
+    if (strcmp(config.mode, "board-gui") == 0 || strcmp(config.mode, "gui") == 0) {
+        int rc = cf_gui_run(game, &argc, &argv);
+        cf_engine_free(game);
+        return rc;
+    }
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     cf_cli_run(game);
     cf_engine_free(game);
     return 0;

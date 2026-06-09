@@ -2,7 +2,10 @@
 
 #include <stdio.h>
 #include <string.h>
+<<<<<<< HEAD
 #include <sys/stat.h>
+=======
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 #include <time.h>
 
 static void timestamp(char *buf, int size, const char *fmt) {
@@ -30,8 +33,11 @@ void cf_json_escape(const char *src, char *dst, int dst_size) {
 bool cf_log_open(CfGame *game) {
     char stamp[32];
     if (!game) return false;
+<<<<<<< HEAD
     mkdir("logs", 0775);
     mkdir("logs/snapshots", 0775);
+=======
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     timestamp(stamp, sizeof(stamp), "%Y%m%d_%H%M%S");
     snprintf(game->session_id, sizeof(game->session_id), "session_%s", stamp);
     snprintf(game->log_path, sizeof(game->log_path), "logs/%s.jsonl", game->session_id);
@@ -43,10 +49,15 @@ void cf_log_event(CfGame *game, const char *event, const char *json_fields) {
     char stamp[40];
     if (!game || !game->log_file || !event) return;
     timestamp(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%S%z");
+<<<<<<< HEAD
     fprintf(game->log_file,
             "{\"event\":\"%s\",\"turn_id\":%d,\"time\":\"%s\",\"session_id\":\"%s\",\"mode\":\"%s\",\"team_count\":%d,\"current_player\":%d",
             event, game->turn_id, stamp, game->session_id, game->config.mode,
             game->config.team_count, game->current_player);
+=======
+    fprintf(game->log_file, "{\"event\":\"%s\",\"turn_id\":%d,\"time\":\"%s\"",
+            event, game->turn_id, stamp);
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     if (json_fields && json_fields[0]) fprintf(game->log_file, ",%s", json_fields);
     fprintf(game->log_file, "}\n");
     fflush(game->log_file);

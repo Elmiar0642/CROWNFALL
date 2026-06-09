@@ -4,6 +4,7 @@
 #include "dice.h"
 #include "log.h"
 #include <gtk/gtk.h>
+<<<<<<< HEAD
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,14 @@ typedef struct {
     GtkWidget *from_entry;
     GtkWidget *to_entry;
     GtkWidget *branch_entry;
+=======
+
+typedef struct {
+    CfGame *game;
+    GtkWidget *turn_label;
+    GtkWidget *dice_label;
+    GtkTextBuffer *log_buffer;
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 } GuiCtx;
 
 static void append_log(GuiCtx *ctx, const char *text) {
@@ -32,6 +41,7 @@ static void append_log(GuiCtx *ctx, const char *text) {
     gtk_text_buffer_insert(ctx->log_buffer, &end, "\n", -1);
 }
 
+<<<<<<< HEAD
 static char *buffer_text(GtkTextBuffer *buffer) {
     GtkTextIter start, end;
     gtk_text_buffer_get_start_iter(buffer, &start);
@@ -120,10 +130,21 @@ static void on_start(GtkButton *button, gpointer data) {
     append_log(ctx, "Session started.");
     append_log(ctx, ctx->game->log_path);
     refresh_view(ctx);
+=======
+static void refresh_labels(GuiCtx *ctx) {
+    char buf[256];
+    CfPlayer *p = &ctx->game->players[ctx->game->current_player];
+    snprintf(buf, sizeof(buf), "Turn %d: %s / Team %d / %s", ctx->game->turn_id, p->name, p->team + 1, p->role);
+    gtk_label_set_text(GTK_LABEL(ctx->turn_label), buf);
+    snprintf(buf, sizeof(buf), "Dice: %d + %d = %d%s", ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum,
+             ctx->game->dice_rolled ? "" : " (roll needed)");
+    gtk_label_set_text(GTK_LABEL(ctx->dice_label), buf);
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 }
 
 static void on_roll(GtkButton *button, gpointer data) {
     GuiCtx *ctx = data;
+<<<<<<< HEAD
     char fields[256], line[128];
     CfPlayer *p;
     (void)button;
@@ -194,10 +215,22 @@ static void on_branch(GtkButton *button, gpointer data) {
     turn_id = atoi(gtk_entry_get_text(GTK_ENTRY(ctx->branch_entry)));
     if (cf_engine_branch(ctx->game, turn_id, path, sizeof(path))) append_log(ctx, path);
     else append_log(ctx, "Time travel is disabled or branch failed.");
+=======
+    char fields[160], line[80];
+    (void)button;
+    cf_roll_custom_dice(&ctx->game->die_a, &ctx->game->die_b, &ctx->game->dice_sum);
+    ctx->game->dice_rolled = true;
+    snprintf(fields, sizeof(fields), "\"die_a\":%d,\"die_b\":%d,\"sum\":%d", ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
+    cf_log_event(ctx->game, "dice_roll", fields);
+    snprintf(line, sizeof(line), "Rolled %d + %d = %d", ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
+    append_log(ctx, line);
+    refresh_labels(ctx);
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 }
 
 int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     GtkBuilder *builder;
+<<<<<<< HEAD
     GtkWidget *roll;
     GtkWidget *legal;
     GtkWidget *move;
@@ -250,6 +283,28 @@ int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     gtk_main();
     if (ctx->game && ctx->game != game) cf_engine_free(ctx->game);
     g_free(ctx);
+=======
+    GtkWidget *window;
+    GtkWidget *roll;
+    GtkWidget *view;
+    GuiCtx ctx;
+    gtk_init(argc, argv);
+    builder = gtk_builder_new_from_file("ui/crownfall.glade");
+    window = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+    roll = GTK_WIDGET(gtk_builder_get_object(builder, "roll_button"));
+    view = GTK_WIDGET(gtk_builder_get_object(builder, "log_view"));
+    ctx.game = game;
+    ctx.turn_label = GTK_WIDGET(gtk_builder_get_object(builder, "turn_label"));
+    ctx.dice_label = GTK_WIDGET(gtk_builder_get_object(builder, "dice_label"));
+    ctx.log_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(view));
+    gtk_builder_connect_signals(builder, NULL);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    g_signal_connect(roll, "clicked", G_CALLBACK(on_roll), &ctx);
+    append_log(&ctx, "CrownFall GUI skeleton ready. Use CLI for full notation play.");
+    refresh_labels(&ctx);
+    gtk_widget_show_all(window);
+    gtk_main();
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     g_object_unref(builder);
     return 0;
 }
@@ -259,7 +314,11 @@ int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     (void)game;
     (void)argc;
     (void)argv;
+<<<<<<< HEAD
     puts("GTK3 support was not compiled in. Install GTK3 development packages and rebuild, or run ./bin/crownfall --cli.");
+=======
+    puts("GTK3 support was not available at build time. Rebuild with GTK3 development packages installed.");
+>>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     return 1;
 }
 #endif
