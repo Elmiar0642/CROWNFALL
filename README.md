@@ -14,7 +14,7 @@ Output:
 ./bin/crownfall
 ```
 
-GTK3 is optional at compile time. If `pkg-config gtk+-3.0` is available, the GUI is compiled in. Without GTK3 development headers, the binary still builds and text mode works.
+GTK3 is required by default. The Makefile checks `pkg-config gtk+-3.0` and links the GUI build. For a CLI-only fallback build, use `make REQUIRE_GTK=0`.
 
 ## Run
 
@@ -22,9 +22,14 @@ GTK3 is optional at compile time. If `pkg-config gtk+-3.0` is available, the GUI
 ./bin/crownfall
 ```
 
-Startup asks for:
+The default launch opens the GTK/Glade GUI setup screen. Console setup is available explicitly:
 
-- mode: `text` or `board-gui`
+```sh
+./bin/crownfall --cli
+```
+
+GUI startup collects:
+
 - team count: `2`, `4`, `6`, or `8`
 - time travel: `enable` or `disable`
 - team names
@@ -66,7 +71,7 @@ Snapshots are written to:
 logs/snapshots/latest.json
 ```
 
-Each log line is a JSON event. Implemented event emission includes session start/end, config, turn start, dice roll, legal move generation, move attempt/success, capture, Bloodfall, Widow Freeze, branch creation, and session end. Advanced rule events are represented as clean extension points.
+Each log line is a JSON event with timestamp, session id, mode, team count, current player, and event details. Implemented event emission includes session start/end, config, team/player registration, turn start, dice roll, legal move generation, move attempt/success, capture, Bloodfall, Widow Freeze, branch creation, and session end. Advanced rule events are represented as clean extension points.
 
 ## Implementation Notes
 
@@ -89,6 +94,6 @@ Each log line is a JSON event. Implemented event emission includes session start
 - `src/log.c`, `src/log.h`: JSONL logging.
 - `src/replay.c`, `src/replay.h`: replay/time-travel stubs.
 - `src/api.c`, `src/api.h`, `include/crownfall_api.h`: future agent API.
-- `src/gui.c`, `src/gui.h`, `ui/crownfall.glade`: GTK3 GUI shell.
+- `src/gui.c`, `src/gui.h`, `ui/crownfall.glade`: GTK3 GUI setup and board shell.
 
 More detailed path/line/column anchors are in `docs/IMPLEMENTATION_INDEX.md`.
