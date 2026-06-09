@@ -5,19 +5,12 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 ## Startup and Modes
 
 - `src/main.c:8:1` - `main` handles normal startup and `--agent`.
-<<<<<<< HEAD
 - `src/main.c:19:1` - default startup routes to GUI; `--cli` routes to console setup.
 - `src/cli.c:27:1` - `cf_prompt_config` asks for mode, team count, time travel, team names, and player names.
 - `src/cli.c:68:1` - `cf_cli_run` implements text/notation commands.
 - `src/gui.c:95:1` - GUI Start Session handler builds config and creates the game.
 - `src/gui.c:199:1` - GTK3 GUI entry loads Glade and connects controls.
 - `src/gui.c:258:1` - no-GTK fallback message when GTK3 headers/libs are unavailable.
-=======
-- `src/cli.c:27:1` - `cf_prompt_config` asks for mode, team count, time travel, team names, and player names.
-- `src/cli.c:68:1` - `cf_cli_run` implements text/notation commands.
-- `src/gui.c:45:1` - GTK3 GUI entry when GTK is available.
-- `src/gui.c:72:1` - no-GTK fallback message when GTK3 headers/libs are unavailable.
->>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 
 ## Board and Coordinates
 
@@ -60,13 +53,8 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 
 - `src/dice.c:6:1` - `cf_dice_seed`.
 - `src/dice.c:10:1` - `cf_roll_custom_dice` uses Die A `{1,2,3,4,1,2}` and Die B `{1,2,3,1,2,3}`.
-<<<<<<< HEAD
 - `src/log.c:30:1` - `cf_log_open` creates log directories and `logs/session_<timestamp>.jsonl`.
 - `src/log.c:42:1` - `cf_log_event` writes timestamped JSONL events with session metadata.
-=======
-- `src/log.c:29:1` - `cf_log_open` creates `logs/session_<timestamp>.jsonl`.
-- `src/log.c:39:1` - `cf_log_event` writes JSONL events.
->>>>>>> b1b79ed (Initial CrownFall engine scaffold)
 - `src/log.c:50:1` - `cf_log_close`.
 - `src/engine.c:248:1` - `cf_engine_snapshot` writes full snapshot JSON.
 
@@ -82,7 +70,6 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 ## GUI and Glade
 
 - `ui/crownfall.glade:4:3` - main GTK window.
-<<<<<<< HEAD
 - `ui/crownfall.glade:15:15` - setup tab grid.
 - `ui/crownfall.glade:29:19` - team count selector.
 - `ui/crownfall.glade:36:19` - time-travel check button.
@@ -94,12 +81,3 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 - `ui/crownfall.glade:110:35` - Branch button.
 - `ui/crownfall.glade:121:44` - board text view.
 - `ui/crownfall.glade:128:44` - session log panel.
-=======
-- `ui/crownfall.glade:18:19` - turn label.
-- `ui/crownfall.glade:19:19` - dice label.
-- `ui/crownfall.glade:22:19` - Roll Dice button.
-- `ui/crownfall.glade:31:29` - Legal Moves button.
-- `ui/crownfall.glade:32:29` - Branch button.
-- `ui/crownfall.glade:38:29` - session log panel.
-
->>>>>>> b1b79ed (Initial CrownFall engine scaffold)

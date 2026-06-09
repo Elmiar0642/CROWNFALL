@@ -47,7 +47,6 @@ Created `crownfall_engine` as a C11/Makefile project.
 - `src/replay.c:14:5`
   - Implement log replay to create branches.
 
-<<<<<<< HEAD
 ## 2026-06-09 GUI Launch and Logging Fixes
 
 ### Changed Files
@@ -75,5 +74,3 @@ Created `crownfall_engine` as a C11/Makefile project.
   - Team and player registration events are emitted for both GUI and CLI sessions.
 - `README.md:5:1`
   - Documented default GUI launch, explicit CLI launch, GTK build requirement, and richer log metadata.
-=======
->>>>>>> b1b79ed (Initial CrownFall engine scaffold)

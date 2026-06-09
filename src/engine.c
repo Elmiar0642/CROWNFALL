@@ -102,12 +102,8 @@ static void setup_pieces(CfGame *g) {
 
 CfGame *cf_engine_new(const CfConfig *config) {
     CfGame *g = calloc(1, sizeof(*g));
-<<<<<<< HEAD
     char fields[512];
     int i;
-=======
-    char fields[256];
->>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     if (!g) return NULL;
     if (config) g->config = *config;
     if (g->config.team_count == 0) g->config.team_count = 2;
@@ -116,7 +112,6 @@ CfGame *cf_engine_new(const CfConfig *config) {
     setup_players(g);
     setup_pieces(g);
     cf_log_open(g);
-<<<<<<< HEAD
     snprintf(fields, sizeof(fields), "\"version\":\"0.2.0\",\"log_path\":\"%s\"", g->log_path);
     cf_log_event(g, "session_start", fields);
     snprintf(fields, sizeof(fields), "\"configured_team_count\":%d,\"time_travel\":%s,\"playable_squares\":%d",
@@ -135,13 +130,6 @@ CfGame *cf_engine_new(const CfConfig *config) {
                  g->players[i].player_id, g->players[i].team, g->players[i].role, name);
         cf_log_event(g, "player_registered", fields);
     }
-=======
-    snprintf(fields, sizeof(fields), "\"session_id\":\"%s\"", g->session_id);
-    cf_log_event(g, "session_start", fields);
-    snprintf(fields, sizeof(fields), "\"team_count\":%d,\"time_travel\":%s,\"playable_squares\":%d",
-             g->config.team_count, g->config.time_travel ? "true" : "false", cf_board_playable_count(&g->board));
-    cf_log_event(g, "config", fields);
->>>>>>> b1b79ed (Initial CrownFall engine scaffold)
     cf_engine_start_turn(g);
     return g;
 }
