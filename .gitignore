@@ -1,0 +1,4 @@
+bin/
+*.o
+logs/session_*.jsonl
+logs/snapshots/*.json
