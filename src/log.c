@@ -44,8 +44,7 @@ void cf_log_event(CfGame *game, const char *event, const char *json_fields) {
     if (!game || !game->log_file || !event) return;
     timestamp(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%S%z");
     fprintf(game->log_file,
-            "{\"event\":\"%s\",\"turn_id\":%d,\"time\":\"%s\",\"session_id\":\"%s\"," 
-            "\"mode\":\"%s\",\"team_count\":%d,\"current_player\":%d",
+            "{\"event\":\"%s\",\"turn_id\":%d,\"time\":\"%s\",\"session_id\":\"%s\",\"mode\":\"%s\",\"team_count\":%d,\"current_player\":%d",
             event, game->turn_id, stamp, game->session_id, game->config.mode,
             game->config.team_count, game->current_player);
     if (json_fields && json_fields[0]) fprintf(game->log_file, ",%s", json_fields);
