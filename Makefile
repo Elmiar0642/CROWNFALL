@@ -3,10 +3,14 @@ PKG_CONFIG ?= pkg-config
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -g
 CPPFLAGS += -Isrc -Iinclude
 LDFLAGS ?=
+REQUIRE_GTK ?= 1
 
 GTK_CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk+-3.0 2>/dev/null)
 GTK_LIBS := $(shell $(PKG_CONFIG) --libs gtk+-3.0 2>/dev/null)
 ifeq ($(GTK_LIBS),)
+ifeq ($(REQUIRE_GTK),1)
+$(error GTK3 development files were not found. Install gtk+-3.0 dev packages or build with REQUIRE_GTK=0 for CLI-only fallback)
+endif
 GTK_DEFINE :=
 else
 GTK_DEFINE := -DCROWNFALL_HAVE_GTK
