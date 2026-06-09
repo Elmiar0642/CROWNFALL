@@ -74,3 +74,4 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 - `ui/crownfall.glade:31:29` - Legal Moves button.
 - `ui/crownfall.glade:32:29` - Branch button.
 - `ui/crownfall.glade:38:29` - session log panel.
+
