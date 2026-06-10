@@ -141,3 +141,19 @@ Created `crownfall_engine` as a C11/Makefile project.
   - Keeps build artifacts, including `bin/crownfall`, ignored because the remote LFS budget is exhausted.
 - `docs/RELEASE_NOTES_v0.3.0.md:1:1`
   - Added release notes, included features, source-build binary note, and known remaining GUI issues.
+
+## 2026-06-10 GUI Logging and Movement Rebuild Fix
+
+### Changed Files
+
+- `Makefile:2:1`
+  - Added `-MMD -MP` dependency generation and `.d` includes so changes to shared headers rebuild dependent objects.
+  - This fixes stale-object movement failures caused by `movegen.o` being compiled against an older `CfPiece` layout.
+- `src/log.h:7:1`, `src/log.c:34:1`, `src/engine.h:88:1`
+  - Added a live logger sink callback so GUI side logs can receive events from the same JSONL logger path.
+- `src/gui.c:70:1`
+  - Backfills startup events from the JSONL session file into the side pane.
+  - Logs piece selection through `cf_log_event`.
+  - Allows clicking another own piece to switch selection.
+  - Shows legal destination coordinates when an illegal destination is clicked.
+  - Draws House court labels underneath pieces instead of over them.

@@ -1,4 +1,5 @@
 bin/
 *.o
+*.d
 logs/session_*.jsonl
 logs/snapshots/*.json

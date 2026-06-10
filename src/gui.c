@@ -74,9 +74,55 @@ static void gui_log(GuiCtx *ctx, const char *text) {
     gtk_text_buffer_insert(ctx->log_buffer, &end, "\n", -1);
 }
 
+static bool json_summary(const char *json, char *out, int out_size) {
+    const char *key = "\"human_readable_summary\":\"";
+    const char *p = strstr(json ? json : "", key);
+    const char *q;
+    int n = 0;
+    if (!p || !out || out_size <= 0) return false;
+    p += strlen(key);
+    q = p;
+    while (*q && !(*q == '"' && (q == p || q[-1] != '\\'))) q++;
+    while (p < q && n < out_size - 1) {
+        if (*p == '\\' && p + 1 < q) p++;
+        out[n++] = *p++;
+    }
+    out[n] = '\0';
+    return true;
+}
+
+static void gui_log_event_sink(void *user, const char *event, const char *json_fields) {
+    GuiCtx *ctx = user;
+    char summary[512];
+    if (json_summary(json_fields, summary, sizeof(summary))) gui_log(ctx, summary);
+    else if (event) {
+        snprintf(summary, sizeof(summary), "%s", event);
+        gui_log(ctx, summary);
+    }
+}
+
+static void load_existing_log(GuiCtx *ctx) {
+    FILE *f;
+    char line[2048], summary[512];
+    if (!ctx || !ctx->game || !ctx->game->log_path[0]) return;
+    f = fopen(ctx->game->log_path, "r");
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (json_summary(line, summary, sizeof(summary))) gui_log(ctx, summary);
+        else if (strstr(line, "\"event\":\"session_start\"")) gui_log(ctx, "Session started");
+        else if (strstr(line, "\"event\":\"config\"")) gui_log(ctx, "Configuration loaded");
+        else if (strstr(line, "\"event\":\"player_registered\"")) gui_log(ctx, "Player registered");
+    }
+    fclose(f);
+}
+
 static void set_status(GuiCtx *ctx, const char *text) {
     if (ctx && ctx->status_label) gtk_label_set_text(GTK_LABEL(ctx->status_label), text ? text : "");
     if (text && text[0]) gui_log(ctx, text);
+}
+
+static void set_status_only(GuiCtx *ctx, const char *text) {
+    if (ctx && ctx->status_label) gtk_label_set_text(GTK_LABEL(ctx->status_label), text ? text : "");
 }
 
 static int selected_team_count(GuiCtx *ctx) {
@@ -263,7 +309,6 @@ static gboolean on_board_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
             CfCoord c = {layer, x, y};
             double sx = pad + x * cell;
             double sy = pad + (ctx->game->board.size - 1 - y) * cell;
-            int p = cf_engine_piece_at(ctx->game, c);
             bool legal = false;
             for (i = 0; i < ctx->legal_count; i++) if (move_targets(&ctx->legal_moves[i], c)) legal = true;
             if (!cf_board_is_playable(&ctx->game->board, c)) cairo_set_source_rgb(cr, 0.02, 0.02, 0.025);
@@ -289,6 +334,15 @@ static gboolean on_board_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
             cairo_set_line_width(cr, 1.0);
             cairo_rectangle(cr, sx, sy, cell, cell);
             cairo_stroke(cr);
+        }
+    }
+    for (i = 0; i < ctx->game->house_count; i++) draw_house_zone(ctx, cr, layer, i, pad, cell);
+    for (y = 0; y < ctx->game->board.size; y++) {
+        for (x = 0; x < ctx->game->board.size; x++) {
+            CfCoord c = {layer, x, y};
+            double sx = pad + x * cell;
+            double sy = pad + (ctx->game->board.size - 1 - y) * cell;
+            int p = cf_engine_piece_at(ctx->game, c);
             if (p >= 0) {
                 char label[8];
                 const CfHouse *hinfo = cf_get_house_info(ctx->game, ctx->game->pieces[p].team);
@@ -303,7 +357,6 @@ static gboolean on_board_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
             }
         }
     }
-    for (i = 0; i < ctx->game->house_count; i++) draw_house_zone(ctx, cr, layer, i, pad, cell);
     cairo_set_source_rgb(cr, 0.85, 0.85, 0.82);
     for (x = 0; x < ctx->game->board.size; x++) {
         char s[16];
@@ -342,6 +395,34 @@ static bool move_needs_dice(const CfPiece *piece) {
            piece->type == CF_PIECE_BISHOP || piece->type == CF_PIECE_PRINCE;
 }
 
+static void select_gui_piece(GuiCtx *ctx, CfCoord c, int p) {
+    char sq[16], label[8], msg[220], fields[512];
+    ctx->selected = true;
+    ctx->selected_coord = c;
+    ctx->legal_count = cf_engine_generate_moves(ctx->game, ctx->game->current_player, c, ctx->legal_moves, CF_MAX_MOVES);
+    cf_coord_to_string(&ctx->game->board, c, sq, sizeof(sq));
+    piece_label(&ctx->game->pieces[p], label, sizeof(label));
+    snprintf(msg, sizeof(msg), "[Turn %d] %s selected %s at %s. %d legal move%s shown.",
+             ctx->game->turn_id, ctx->game->houses[ctx->game->pieces[p].team].house_name, label, sq,
+             ctx->legal_count, ctx->legal_count == 1 ? "" : "s");
+    snprintf(fields, sizeof(fields), "\"piece_id\":%d,\"piece_role\":\"%s\",\"square\":\"%s\",\"legal_count\":%d,\"human_readable_summary\":\"%s\"",
+             ctx->game->pieces[p].id, cf_piece_role_name(ctx->game->pieces[p].role), sq, ctx->legal_count, msg);
+    cf_log_event(ctx->game, "piece_selected", fields);
+    set_status_only(ctx, msg);
+}
+
+static void legal_destinations_text(GuiCtx *ctx, char *out, int out_size) {
+    int i, n = 0;
+    if (!out || out_size <= 0) return;
+    out[0] = '\0';
+    for (i = 0; i < ctx->legal_count && i < 12 && n < out_size - 8; i++) {
+        char sq[16];
+        cf_coord_to_string(&ctx->game->board, ctx->legal_moves[i].to, sq, sizeof(sq));
+        n += snprintf(out + n, (size_t)(out_size - n), "%s%s", i ? ", " : "", sq);
+    }
+    if (ctx->legal_count > 12 && n < out_size - 5) snprintf(out + n, (size_t)(out_size - n), ", ...");
+}
+
 static gboolean on_board_click(GtkWidget *widget, GdkEventButton *event, gpointer data) {
     GuiCtx *ctx = data;
     CfCoord c;
@@ -360,17 +441,19 @@ static gboolean on_board_click(GtkWidget *widget, GdkEventButton *event, gpointe
             set_status(ctx, "That piece does not belong to the current player team.");
             return TRUE;
         }
-        ctx->selected = true;
-        ctx->selected_coord = c;
-        ctx->legal_count = cf_engine_generate_moves(ctx->game, ctx->game->current_player, c, ctx->legal_moves, CF_MAX_MOVES);
-        {
-            char sq[16], label[8], msg[160];
-            cf_coord_to_string(&ctx->game->board, c, sq, sizeof(sq));
-            piece_label(&ctx->game->pieces[p], label, sizeof(label));
-            snprintf(msg, sizeof(msg), "[Turn %d] %s selected %s at %s. Legal moves shown.",
-                     ctx->game->turn_id, ctx->game->houses[ctx->game->pieces[p].team].house_name, label, sq);
-            set_status(ctx, msg);
+        select_gui_piece(ctx, c, p);
+        refresh_labels(ctx);
+        return TRUE;
+    }
+    if (p >= 0 && ctx->game->pieces[p].team == ctx->game->players[ctx->game->current_player].team) {
+        if (coord_equal(ctx->selected_coord, c)) {
+            ctx->selected = false;
+            ctx->legal_count = 0;
+            set_status(ctx, "Selection cleared.");
+            refresh_labels(ctx);
+            return TRUE;
         }
+        select_gui_piece(ctx, c, p);
         refresh_labels(ctx);
         return TRUE;
     }
@@ -392,7 +475,7 @@ static gboolean on_board_click(GtkWidget *widget, GdkEventButton *event, gpointe
                 piece_label(&ctx->game->pieces[piece_index], label, sizeof(label));
                 snprintf(msg, sizeof(msg), "[Turn %d] %s moved %s from %s to %s.",
                          ctx->game->turn_id - 1, ctx->game->houses[ctx->game->pieces[piece_index].team].house_name, label, a, b);
-                set_status(ctx, msg);
+                set_status_only(ctx, msg);
             } else set_status(ctx, err);
             ctx->selected = false;
             ctx->legal_count = 0;
@@ -400,9 +483,12 @@ static gboolean on_board_click(GtkWidget *widget, GdkEventButton *event, gpointe
             return TRUE;
         }
     }
-    ctx->selected = false;
-    ctx->legal_count = 0;
-    set_status(ctx, "Illegal move.");
+    {
+        char options[220], msg[300];
+        legal_destinations_text(ctx, options, sizeof(options));
+        snprintf(msg, sizeof(msg), "Illegal move.%s%s", options[0] ? " Legal destinations: " : "", options);
+        set_status(ctx, msg);
+    }
     refresh_labels(ctx);
     return TRUE;
 }
@@ -434,10 +520,11 @@ static void on_start(GtkButton *button, gpointer data) {
         set_status(ctx, "Failed to start session.");
         return;
     }
+    load_existing_log(ctx);
+    cf_log_set_sink(ctx->game, gui_log_event_sink, ctx);
     if (config.team_count == 6) set_status(ctx, "6-House layout is experimental/WIP; using placeholder cross setup.");
     gtk_widget_set_visible(ctx->branch_button, config.time_travel);
     gtk_notebook_set_current_page(GTK_NOTEBOOK(ctx->notebook), 1);
-    gui_log(ctx, "Turn started");
     gui_log(ctx, ctx->game->log_path);
     refresh_labels(ctx);
 }
@@ -461,7 +548,7 @@ static void on_roll(GtkButton *button, gpointer data) {
     cf_log_event(ctx->game, "dice_roll", fields);
     snprintf(line, sizeof(line), "[Turn %d] %s %s rolled %d + %d = %d.",
              ctx->game->turn_id, ctx->game->houses[p->team].house_name, p->role, ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
-    set_status(ctx, line);
+    set_status_only(ctx, line);
     refresh_labels(ctx);
 }
 

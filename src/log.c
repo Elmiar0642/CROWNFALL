@@ -39,6 +39,12 @@ bool cf_log_open(CfGame *game) {
     return game->log_file != NULL;
 }
 
+void cf_log_set_sink(CfGame *game, CfLogSink sink, void *user) {
+    if (!game) return;
+    game->log_sink = sink;
+    game->log_sink_user = user;
+}
+
 void cf_log_event(CfGame *game, const char *event, const char *json_fields) {
     char stamp[40];
     const CfPlayer *p = NULL;
@@ -57,6 +63,7 @@ void cf_log_event(CfGame *game, const char *event, const char *json_fields) {
     if (json_fields && json_fields[0]) fprintf(game->log_file, ",%s", json_fields);
     fprintf(game->log_file, "}\n");
     fflush(game->log_file);
+    if (game->log_sink) game->log_sink(game->log_sink_user, event, json_fields ? json_fields : "");
 }
 
 void cf_log_close(CfGame *game) {

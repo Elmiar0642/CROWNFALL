@@ -1,7 +1,7 @@
 CC ?= gcc
 PKG_CONFIG ?= pkg-config
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -g
-CPPFLAGS += -Isrc -Iinclude
+CPPFLAGS += -Isrc -Iinclude -MMD -MP
 LDFLAGS ?=
 REQUIRE_GTK ?= 1
 
@@ -18,6 +18,7 @@ endif
 
 SRC := src/main.c src/engine.c src/board.c src/rules.c src/movegen.c src/dice.c src/log.c src/replay.c src/api.c src/cli.c src/gui.c
 OBJ := $(SRC:.c=.o)
+DEP := $(OBJ:.o=.d)
 BIN := bin/crownfall
 
 .PHONY: all clean run
@@ -35,4 +36,6 @@ run: all
 	./$(BIN)
 
 clean:
-	rm -f $(OBJ) $(BIN)
+	rm -f $(OBJ) $(DEP) $(BIN)
+
+-include $(DEP)

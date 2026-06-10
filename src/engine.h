@@ -104,6 +104,8 @@ typedef struct {
     bool pact;
 } CfMercy;
 
+typedef void (*CfLogSink)(void *user, const char *event, const char *json_fields);
+
 typedef struct {
     CfConfig config;
     CfHouse houses[CF_MAX_TEAMS];
@@ -125,6 +127,8 @@ typedef struct {
     char session_id[64];
     char log_path[256];
     FILE *log_file;
+    CfLogSink log_sink;
+    void *log_sink_user;
     char repetition[CF_MAX_HISTORY][512];
     int repetition_count[CF_MAX_HISTORY];
     int repetition_len;
