@@ -84,8 +84,9 @@ int cf_cli_run(CfGame *game) {
             CfPlayer *p = &game->players[game->current_player];
             cf_roll_custom_dice(&game->die_a, &game->die_b, &game->dice_sum);
             game->dice_rolled = true;
-            snprintf(fields, sizeof(fields), "\"player\":\"%s\",\"player_id\":%d,\"die_a\":%d,\"die_b\":%d,\"sum\":%d",
-                     p->name, p->player_id, game->die_a, game->die_b, game->dice_sum);
+            snprintf(fields, sizeof(fields), "\"player_id\":%d,\"dice_a\":%d,\"dice_b\":%d,\"dice_sum\":%d,\"human_readable_summary\":\"%s %s rolled %d + %d = %d.\"",
+                     p->player_id, game->die_a, game->die_b, game->dice_sum, game->houses[p->team].house_name, p->role,
+                     game->die_a, game->die_b, game->dice_sum);
             cf_log_event(game, "dice_roll", fields);
             printf("Rolled %d + %d = %d\n", game->die_a, game->die_b, game->dice_sum);
         } else if (strncmp(line, "moves ", 6) == 0) {

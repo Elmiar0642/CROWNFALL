@@ -102,3 +102,22 @@ Created `crownfall_engine` as a C11/Makefile project.
   - Documented corrected court placement, DrawingArea GUI, mouse movement, side pane, name helpers, and updated agent protocol.
 - `ui/crownfall.glade:137:19`, `src/gui.c:445:9`
   - Fixed collapsed board rendering by replacing the board/log `GtkPaned` with a horizontal box and giving both layer DrawingAreas stable 520x520 minimum sizes.
+
+## 2026-06-10 House-Based Playable GUI Pass
+
+### Changed Files
+
+- `src/engine.h:20:1`, `src/engine.c:11:1`
+  - Added canonical House metadata, House colors, mottos, emblems, asset paths, and active House lookup helpers.
+  - Added explicit left/right piece roles for Queens, Princes, Bishops, Rooks, and Knights.
+- `config/houses.json:1:1`
+  - Added asset-ready default House configuration for Lion, Eagle, Dragon, Wolf, Cobra, Crocodile, Owl, and Albatross.
+- `assets/houses/.gitkeep:1:1`
+  - Added tracked placeholder directory for future PNG House banners.
+- `src/gui.c:1:1`, `ui/crownfall.glade:1:1`
+  - Updated setup to use House defaults and House-aware deterministic random player names.
+  - Added click-to-select/move side-log messages, dice duplicate-roll guard, branch dialog, House court labels, House colors, piece tooltips, side-log filters, and disabled Undo placeholder.
+- `src/log.c:34:1`, `src/cli.c:91:1`
+  - JSONL events now include `event_type`, timestamp, current House, player role, player name, dice fields, and human-readable summaries without duplicate JSON keys.
+- `src/api.c:8:1`, `include/crownfall_api.h:10:1`
+  - Agent state JSON now exposes House metadata and piece identities.

@@ -1,0 +1,92 @@
+{
+  "houses": [
+    {
+      "team_id": 1,
+      "house_name": "House Lion",
+      "motto": "By Strength We Reign",
+      "emblem": "Lion",
+      "primary_color": "#101010",
+      "secondary_color": "#d6ad35",
+      "asset_path": "assets/houses/lion.png",
+      "default_layer": 1,
+      "default_court": "South"
+    },
+    {
+      "team_id": 2,
+      "house_name": "House Eagle",
+      "motto": "None Escape Our Sight",
+      "emblem": "Eagle",
+      "primary_color": "#f2ead3",
+      "secondary_color": "#c9a227",
+      "asset_path": "assets/houses/eagle.png",
+      "default_layer": 1,
+      "default_court": "East"
+    },
+    {
+      "team_id": 3,
+      "house_name": "House Dragon",
+      "motto": "Reality Yields",
+      "emblem": "Dragon",
+      "primary_color": "#8b1e1e",
+      "secondary_color": "#c4932f",
+      "asset_path": "assets/houses/dragon.png",
+      "default_layer": 1,
+      "default_court": "North"
+    },
+    {
+      "team_id": 4,
+      "house_name": "House Wolf",
+      "motto": "Together We Hunt",
+      "emblem": "Wolf",
+      "primary_color": "#1f355c",
+      "secondary_color": "#aab2bd",
+      "asset_path": "assets/houses/wolf.png",
+      "default_layer": 1,
+      "default_court": "West"
+    },
+    {
+      "team_id": 5,
+      "house_name": "House Cobra",
+      "motto": "One Strike Suffices",
+      "emblem": "Cobra",
+      "primary_color": "#0f6b45",
+      "secondary_color": "#171717",
+      "asset_path": "assets/houses/cobra.png",
+      "default_layer": 2,
+      "default_court": "South"
+    },
+    {
+      "team_id": 6,
+      "house_name": "House Crocodile",
+      "motto": "Patience Consumes",
+      "emblem": "Crocodile",
+      "primary_color": "#173d2b",
+      "secondary_color": "#b08a2c",
+      "asset_path": "assets/houses/crocodile.png",
+      "default_layer": 2,
+      "default_court": "East"
+    },
+    {
+      "team_id": 7,
+      "house_name": "House Owl",
+      "motto": "Knowledge Devours",
+      "emblem": "Owl",
+      "primary_color": "#4a2c6f",
+      "secondary_color": "#b8bec8",
+      "asset_path": "assets/houses/owl.png",
+      "default_layer": 2,
+      "default_court": "North"
+    },
+    {
+      "team_id": 8,
+      "house_name": "House Albatross",
+      "motto": "Beyond All Horizons",
+      "emblem": "Albatross",
+      "primary_color": "#102a43",
+      "secondary_color": "#9fc5d9",
+      "asset_path": "assets/houses/albatross.png",
+      "default_layer": 2,
+      "default_court": "West"
+    }
+  ]
+}

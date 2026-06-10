@@ -41,12 +41,19 @@ bool cf_log_open(CfGame *game) {
 
 void cf_log_event(CfGame *game, const char *event, const char *json_fields) {
     char stamp[40];
+    const CfPlayer *p = NULL;
+    const CfHouse *h = NULL;
     if (!game || !game->log_file || !event) return;
+    if (game->player_count > 0 && game->current_player >= 0 && game->current_player < game->player_count) {
+        p = &game->players[game->current_player];
+        h = cf_get_house_info(game, p->team);
+    }
     timestamp(stamp, sizeof(stamp), "%Y-%m-%dT%H:%M:%S%z");
     fprintf(game->log_file,
-            "{\"event\":\"%s\",\"turn_id\":%d,\"time\":\"%s\",\"session_id\":\"%s\",\"mode\":\"%s\",\"team_count\":%d,\"current_player\":%d",
-            event, game->turn_id, stamp, game->session_id, game->config.mode,
-            game->config.team_count, game->current_player);
+            "{\"event\":\"%s\",\"event_type\":\"%s\",\"turn_id\":%d,\"time\":\"%s\",\"session_id\":\"%s\",\"mode\":\"%s\",\"team_count\":%d,\"current_player\":%d,\"team_id\":%d,\"house_name\":\"%s\",\"player_role\":\"%s\",\"player_name\":\"%s\"",
+            event, event, game->turn_id, stamp, game->session_id, game->config.mode,
+            game->config.team_count, game->current_player, h ? h->team_id : 0, h ? h->house_name : "",
+            p ? p->role : "", p ? p->name : "");
     if (json_fields && json_fields[0]) fprintf(game->log_file, ",%s", json_fields);
     fprintf(game->log_file, "}\n");
     fflush(game->log_file);

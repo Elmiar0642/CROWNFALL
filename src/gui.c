@@ -14,6 +14,7 @@ typedef struct {
     CfGame *game;
     GtkWidget *window;
     GtkWidget *notebook;
+    GtkWidget *mode_combo;
     GtkWidget *team_combo;
     GtkWidget *time_check;
     GtkTextBuffer *team_buffer;
@@ -22,6 +23,7 @@ typedef struct {
     GtkWidget *dice_label;
     GtkWidget *status_label;
     GtkWidget *branch_button;
+    GtkWidget *filter_combo;
     GtkWidget *layer_box[GUI_MAX_LAYER_AREAS];
     GtkWidget *layer_area[GUI_MAX_LAYER_AREAS];
     GtkTextBuffer *log_buffer;
@@ -35,25 +37,33 @@ typedef struct {
     CfCoord last_to;
 } GuiCtx;
 
+typedef struct {
+    const char *name;
+    const char *motto;
+    const char *emblem;
+    const char *primary;
+    const char *secondary;
+} GuiHouse;
+
+static const GuiHouse GUI_HOUSES[] = {
+    {"House Albatross", "Beyond All Horizons", "Albatross", "#102a43", "#9fc5d9"},
+    {"House Dragon", "Reality Yields", "Dragon", "#8b1e1e", "#c4932f"},
+    {"House Crocodile", "Patience Consumes", "Crocodile", "#173d2b", "#b08a2c"},
+    {"House Cobra", "One Strike Suffices", "Cobra", "#0f6b45", "#171717"},
+    {"House Owl", "Knowledge Devours", "Owl", "#4a2c6f", "#b8bec8"},
+    {"House Eagle", "None Escape Our Sight", "Eagle", "#f2ead3", "#c9a227"},
+    {"House Wolf", "Together We Hunt", "Wolf", "#1f355c", "#aab2bd"},
+    {"House Lion", "By Strength We Reign", "Lion", "#101010", "#d6ad35"}
+};
+
+static const int GUI_MAP_2[] = {7, 1};
+static const int GUI_MAP_4[] = {7, 5, 1, 6};
+static const int GUI_MAP_8[] = {7, 5, 1, 6, 3, 2, 4, 0};
+
 static const char *RANDOM_NAMES[] = {
     "Aurelian", "Veyra", "Kaelen", "Myrr", "Osric", "Selene", "Thane",
     "Ilyra", "Corvin", "Maera", "Draven", "Eryndor", "Nyx", "Vael",
     "Soren", "Elara", "Arctus", "Neria", "Oryn", "Lyssa"
-};
-
-static const char *DEFAULT_PLAYER_NAMES[24] = {
-    "White Court", "White Left House", "White Right House",
-    "Black Court", "Black Left House", "Black Right House",
-    "North Court", "North Left House", "North Right House",
-    "West Court", "West Left House", "West Right House",
-    "Aurelian Court", "Aurelian Left House", "Aurelian Right House",
-    "Veyra Court", "Veyra Left House", "Veyra Right House",
-    "Kaelen Court", "Kaelen Left House", "Kaelen Right House",
-    "Myrr Court", "Myrr Left House", "Myrr Right House"
-};
-
-static const char *DEFAULT_TEAM_NAMES[8] = {
-    "White", "Black", "North", "West", "Aurelian", "Veyra", "Kaelen", "Myrr"
 };
 
 static void gui_log(GuiCtx *ctx, const char *text) {
@@ -69,12 +79,23 @@ static void set_status(GuiCtx *ctx, const char *text) {
     if (text && text[0]) gui_log(ctx, text);
 }
 
-static void set_text_buffer_lines(GtkTextBuffer *buffer, const char **values, int count) {
-    int i;
-    GString *s = g_string_new("");
-    for (i = 0; i < count; i++) g_string_append_printf(s, "%s\n", values[i]);
-    gtk_text_buffer_set_text(buffer, s->str, -1);
-    g_string_free(s, TRUE);
+static int selected_team_count(GuiCtx *ctx) {
+    int active = gtk_combo_box_get_active(GTK_COMBO_BOX(ctx->team_combo));
+    return active == 1 ? 4 : active == 2 ? 6 : active == 3 ? 8 : 2;
+}
+
+static const GuiHouse *gui_house_for_slot(int teams, int slot) {
+    const int *map = teams == 2 ? GUI_MAP_2 : teams == 4 ? GUI_MAP_4 : GUI_MAP_8;
+    if (slot < 0 || slot >= teams || slot >= 8) return &GUI_HOUSES[0];
+    return &GUI_HOUSES[map[slot]];
+}
+
+static void hex_color(const char *hex, double *r, double *g, double *b) {
+    unsigned int rv = 120, gv = 120, bv = 120;
+    if (hex && hex[0] == '#') sscanf(hex + 1, "%02x%02x%02x", &rv, &gv, &bv);
+    *r = rv / 255.0;
+    *g = gv / 255.0;
+    *b = bv / 255.0;
 }
 
 static char *buffer_text(GtkTextBuffer *buffer) {
@@ -87,46 +108,52 @@ static char *buffer_text(GtkTextBuffer *buffer) {
 static void copy_lines_to_names(char *text, char names[][CF_MAX_NAME], int max_names, const char *prefix) {
     int i = 0;
     char *line = strtok(text, "\n\r");
+    (void)prefix;
     while (line && i < max_names) {
         while (*line == ' ' || *line == '\t') line++;
         if (*line) strncpy(names[i], line, CF_MAX_NAME - 1);
-        if (!names[i][0]) snprintf(names[i], CF_MAX_NAME, "%s %d", prefix, i + 1);
         i++;
         line = strtok(NULL, "\n\r");
-    }
-    while (i < max_names) {
-        snprintf(names[i], CF_MAX_NAME, "%s %d", prefix, i + 1);
-        i++;
     }
 }
 
 static void fill_default_names(GuiCtx *ctx) {
-    int active = gtk_combo_box_get_active(GTK_COMBO_BOX(ctx->team_combo));
-    int teams = active == 1 ? 4 : active == 2 ? 6 : active == 3 ? 8 : 2;
-    set_text_buffer_lines(ctx->team_buffer, DEFAULT_TEAM_NAMES, teams);
-    set_text_buffer_lines(ctx->player_buffer, DEFAULT_PLAYER_NAMES, teams * 3);
-    set_status(ctx, "Default names loaded.");
+    int i;
+    int teams = selected_team_count(ctx);
+    GString *houses = g_string_new("");
+    GString *players = g_string_new("");
+    for (i = 0; i < teams; i++) {
+        const GuiHouse *h = gui_house_for_slot(teams, i);
+        g_string_append_printf(houses, "%s\n", h->name);
+        g_string_append_printf(players, "%s King\n%s Left House\n%s Right House\n", h->name, h->name, h->name);
+    }
+    gtk_text_buffer_set_text(ctx->team_buffer, houses->str, -1);
+    gtk_text_buffer_set_text(ctx->player_buffer, players->str, -1);
+    g_string_free(houses, TRUE);
+    g_string_free(players, TRUE);
+    set_status(ctx, "House defaults loaded.");
 }
 
 static void fill_random_names(GuiCtx *ctx) {
     int i;
-    int active = gtk_combo_box_get_active(GTK_COMBO_BOX(ctx->team_combo));
-    int teams = active == 1 ? 4 : active == 2 ? 6 : active == 3 ? 8 : 2;
+    int teams = selected_team_count(ctx);
     GString *team = g_string_new("");
     GString *players = g_string_new("");
     srand(1);
     for (i = 0; i < teams; i++) {
-        g_string_append_printf(team, "%s Court\n", RANDOM_NAMES[rand() % 20]);
-    }
-    for (i = 0; i < teams * 3; i++) {
-        g_string_append_printf(players, "%s %s\n", RANDOM_NAMES[rand() % 20],
-                               i % 3 == 0 ? "Crown" : i % 3 == 1 ? "Left" : "Right");
+        const GuiHouse *h = gui_house_for_slot(teams, i);
+        const char *short_name = h->name + 6;
+        g_string_append_printf(team, "%s\n", h->name);
+        g_string_append_printf(players, "%s of %s\n", RANDOM_NAMES[rand() % 20], h->name);
+        g_string_append_printf(players, "%s, Left Prince of %s\n", RANDOM_NAMES[rand() % 20], h->name);
+        g_string_append_printf(players, "%s, Right Prince of %s\n", RANDOM_NAMES[rand() % 20], h->name);
+        (void)short_name;
     }
     gtk_text_buffer_set_text(ctx->team_buffer, team->str, -1);
     gtk_text_buffer_set_text(ctx->player_buffer, players->str, -1);
     g_string_free(team, TRUE);
     g_string_free(players, TRUE);
-    set_status(ctx, "Deterministic random names loaded.");
+    set_status(ctx, "Deterministic House names loaded.");
 }
 
 static void on_default_names(GtkButton *button, gpointer data) {
@@ -145,7 +172,7 @@ static void refresh_labels(GuiCtx *ctx) {
     int i;
     if (!ctx->game) return;
     p = &ctx->game->players[ctx->game->current_player];
-    snprintf(buf, sizeof(buf), "Turn %d: %s / Team %d / %s", ctx->game->turn_id, p->name, p->team + 1, p->role);
+    snprintf(buf, sizeof(buf), "Turn %d | %s | %s | %s", ctx->game->turn_id, ctx->game->houses[p->team].house_name, p->role, p->name);
     gtk_label_set_text(GTK_LABEL(ctx->turn_label), buf);
     snprintf(buf, sizeof(buf), "Dice: %d + %d = %d%s", ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum,
              ctx->game->dice_rolled ? "" : " (roll before sliding)");
@@ -172,11 +199,46 @@ static void draw_centered_text(cairo_t *cr, double x, double y, const char *text
 }
 
 static void piece_label(const CfPiece *piece, char *out, int out_size) {
-    const char *prefix = piece->label;
-    if (piece->type == CF_PIECE_QUEEN) prefix = "Q";
-    else if (piece->type == CF_PIECE_PRINCE) prefix = "P";
-    else if (piece->type == CF_PIECE_PAWN) prefix = "p";
-    snprintf(out, (size_t)out_size, "%s%d", prefix, piece->team + 1);
+    if (piece->role == CF_ROLE_QUEEN_LEFT) snprintf(out, (size_t)out_size, "Q%dL", piece->team + 1);
+    else if (piece->role == CF_ROLE_QUEEN_RIGHT) snprintf(out, (size_t)out_size, "Q%dR", piece->team + 1);
+    else if (piece->role == CF_ROLE_PRINCE_LEFT) snprintf(out, (size_t)out_size, "P%dL", piece->team + 1);
+    else if (piece->role == CF_ROLE_PRINCE_RIGHT) snprintf(out, (size_t)out_size, "P%dR", piece->team + 1);
+    else if (piece->type == CF_PIECE_PAWN) snprintf(out, (size_t)out_size, "%s", piece->label);
+    else snprintf(out, (size_t)out_size, "%s%d", piece->label, piece->team + 1);
+}
+
+static void draw_house_zone(GuiCtx *ctx, cairo_t *cr, int layer, int team, double pad, double cell) {
+    const CfHouse *h = cf_get_house_info(ctx->game, team);
+    double r, g, b, x = 0, y = 0, w = 0, ht = 0;
+    char title[96];
+    if (!h || h->default_layer != layer) return;
+    if (ctx->game->board.size == 9) {
+        x = pad;
+        y = pad + (team == 0 ? 6 : 0) * cell;
+        w = 9 * cell;
+        ht = 3 * cell;
+    } else if (strcmp(h->default_court, "South") == 0) {
+        x = pad + 3 * cell; y = pad + 12 * cell; w = 9 * cell; ht = 3 * cell;
+    } else if (strcmp(h->default_court, "North") == 0) {
+        x = pad + 3 * cell; y = pad; w = 9 * cell; ht = 3 * cell;
+    } else if (strcmp(h->default_court, "East") == 0) {
+        x = pad + 12 * cell; y = pad + 3 * cell; w = 3 * cell; ht = 9 * cell;
+    } else {
+        x = pad; y = pad + 3 * cell; w = 3 * cell; ht = 9 * cell;
+    }
+    hex_color(h->primary_color, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.18);
+    cairo_rectangle(cr, x + 4, y + 4, w - 8, ht - 8);
+    cairo_stroke(cr);
+    hex_color(h->secondary_color, &r, &g, &b);
+    cairo_set_source_rgba(cr, r, g, b, 0.95);
+    cairo_set_line_width(cr, 3.0);
+    cairo_rectangle(cr, x + 1.5, y + 1.5, w - 3, ht - 3);
+    cairo_stroke(cr);
+    cairo_set_source_rgb(cr, 0.96, 0.95, 0.90);
+    snprintf(title, sizeof(title), "%s", h->house_name);
+    draw_centered_text(cr, x + w / 2, y + ht / 2 - 9, title, cell * 0.18);
+    draw_centered_text(cr, x + w / 2, y + ht / 2 + 9, h->motto, cell * 0.12);
 }
 
 static gboolean on_board_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
@@ -195,7 +257,7 @@ static gboolean on_board_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
     cairo_set_source_rgb(cr, 0.08, 0.09, 0.11);
     cairo_paint(cr);
     cairo_set_source_rgb(cr, 0.88, 0.88, 0.84);
-    draw_centered_text(cr, w / 2.0, 14.0, layer == 0 ? "Layer L1" : "Layer L2", 12.0);
+    draw_centered_text(cr, w / 2.0, 14.0, layer == 0 ? "Layer L1: Lion, Eagle, Dragon, Wolf" : "Layer L2: Cobra, Crocodile, Owl, Albatross", 12.0);
     for (y = 0; y < ctx->game->board.size; y++) {
         for (x = 0; x < ctx->game->board.size; x++) {
             CfCoord c = {layer, x, y};
@@ -229,15 +291,19 @@ static gboolean on_board_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
             cairo_stroke(cr);
             if (p >= 0) {
                 char label[8];
+                const CfHouse *hinfo = cf_get_house_info(ctx->game, ctx->game->pieces[p].team);
+                double rr = 0.05, gg = 0.05, bb = 0.05;
                 piece_label(&ctx->game->pieces[p], label, sizeof(label));
-                cairo_set_source_rgb(cr, 0.05, 0.05, 0.05);
+                if (hinfo) hex_color(hinfo->primary_color, &rr, &gg, &bb);
+                cairo_set_source_rgb(cr, rr, gg, bb);
                 cairo_arc(cr, sx + cell / 2, sy + cell / 2, cell * 0.38, 0, 6.28318);
                 cairo_fill(cr);
                 cairo_set_source_rgb(cr, 0.94, 0.93, 0.86);
-                draw_centered_text(cr, sx + cell / 2, sy + cell / 2, label, cell * 0.32);
+                draw_centered_text(cr, sx + cell / 2, sy + cell / 2, label, cell * 0.24);
             }
         }
     }
+    for (i = 0; i < ctx->game->house_count; i++) draw_house_zone(ctx, cr, layer, i, pad, cell);
     cairo_set_source_rgb(cr, 0.85, 0.85, 0.82);
     for (x = 0; x < ctx->game->board.size; x++) {
         char s[16];
@@ -297,7 +363,14 @@ static gboolean on_board_click(GtkWidget *widget, GdkEventButton *event, gpointe
         ctx->selected = true;
         ctx->selected_coord = c;
         ctx->legal_count = cf_engine_generate_moves(ctx->game, ctx->game->current_player, c, ctx->legal_moves, CF_MAX_MOVES);
-        set_status(ctx, "Piece selected.");
+        {
+            char sq[16], label[8], msg[160];
+            cf_coord_to_string(&ctx->game->board, c, sq, sizeof(sq));
+            piece_label(&ctx->game->pieces[p], label, sizeof(label));
+            snprintf(msg, sizeof(msg), "[Turn %d] %s selected %s at %s. Legal moves shown.",
+                     ctx->game->turn_id, ctx->game->houses[ctx->game->pieces[p].team].house_name, label, sq);
+            set_status(ctx, msg);
+        }
         refresh_labels(ctx);
         return TRUE;
     }
@@ -312,8 +385,15 @@ static gboolean on_board_click(GtkWidget *widget, GdkEventButton *event, gpointe
             ctx->last_from = ctx->selected_coord;
             ctx->last_to = c;
             ctx->has_last_move = true;
-            if (cf_engine_apply_move(ctx->game, &ctx->legal_moves[i], err, sizeof(err))) set_status(ctx, "Move completed.");
-            else set_status(ctx, err);
+            if (cf_engine_apply_move(ctx->game, &ctx->legal_moves[i], err, sizeof(err))) {
+                char a[16], b[16], label[8], msg[180];
+                cf_coord_to_string(&ctx->game->board, ctx->last_from, a, sizeof(a));
+                cf_coord_to_string(&ctx->game->board, ctx->last_to, b, sizeof(b));
+                piece_label(&ctx->game->pieces[piece_index], label, sizeof(label));
+                snprintf(msg, sizeof(msg), "[Turn %d] %s moved %s from %s to %s.",
+                         ctx->game->turn_id - 1, ctx->game->houses[ctx->game->pieces[piece_index].team].house_name, label, a, b);
+                set_status(ctx, msg);
+            } else set_status(ctx, err);
             ctx->selected = false;
             ctx->legal_count = 0;
             refresh_labels(ctx);
@@ -354,6 +434,7 @@ static void on_start(GtkButton *button, gpointer data) {
         set_status(ctx, "Failed to start session.");
         return;
     }
+    if (config.team_count == 6) set_status(ctx, "6-House layout is experimental/WIP; using placeholder cross setup.");
     gtk_widget_set_visible(ctx->branch_button, config.time_travel);
     gtk_notebook_set_current_page(GTK_NOTEBOOK(ctx->notebook), 1);
     gui_log(ctx, "Turn started");
@@ -363,17 +444,23 @@ static void on_start(GtkButton *button, gpointer data) {
 
 static void on_roll(GtkButton *button, gpointer data) {
     GuiCtx *ctx = data;
-    char fields[256], line[128];
+    char fields[768], line[160];
     CfPlayer *p;
     (void)button;
     if (!ctx->game) return;
+    if (ctx->game->dice_rolled) {
+        set_status(ctx, "Dice already rolled this turn.");
+        return;
+    }
     p = &ctx->game->players[ctx->game->current_player];
     cf_roll_custom_dice(&ctx->game->die_a, &ctx->game->die_b, &ctx->game->dice_sum);
     ctx->game->dice_rolled = true;
-    snprintf(fields, sizeof(fields), "\"player\":\"%s\",\"player_id\":%d,\"die_a\":%d,\"die_b\":%d,\"sum\":%d",
-             p->name, p->player_id, ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
+    snprintf(fields, sizeof(fields), "\"player_id\":%d,\"dice_a\":%d,\"dice_b\":%d,\"dice_sum\":%d,\"human_readable_summary\":\"%s %s rolled %d + %d = %d.\"",
+             p->player_id, ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum,
+             ctx->game->houses[p->team].house_name, p->role, ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
     cf_log_event(ctx->game, "dice_roll", fields);
-    snprintf(line, sizeof(line), "Dice rolled: %d + %d = %d", ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
+    snprintf(line, sizeof(line), "[Turn %d] %s %s rolled %d + %d = %d.",
+             ctx->game->turn_id, ctx->game->houses[p->team].house_name, p->role, ctx->game->die_a, ctx->game->die_b, ctx->game->dice_sum);
     set_status(ctx, line);
     refresh_labels(ctx);
 }
@@ -381,22 +468,70 @@ static void on_roll(GtkButton *button, gpointer data) {
 static void on_branch(GtkButton *button, gpointer data) {
     GuiCtx *ctx = data;
     char path[256];
+    GtkWidget *dialog, *entry, *content;
+    int response, turn_id;
     (void)button;
     if (!ctx->game) return;
-    if (cf_engine_branch(ctx->game, ctx->game->turn_id, path, sizeof(path))) set_status(ctx, path);
+    dialog = gtk_dialog_new_with_buttons("Create Branch", GTK_WINDOW(ctx->window), GTK_DIALOG_MODAL,
+                                         "Create Branch", GTK_RESPONSE_OK, "Cancel", GTK_RESPONSE_CANCEL, NULL);
+    content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "Turn ID");
+    gtk_box_pack_start(GTK_BOX(content), entry, FALSE, FALSE, 8);
+    gtk_widget_show_all(dialog);
+    response = gtk_dialog_run(GTK_DIALOG(dialog));
+    turn_id = atoi(gtk_entry_get_text(GTK_ENTRY(entry)));
+    gtk_widget_destroy(dialog);
+    if (response != GTK_RESPONSE_OK) return;
+    if (cf_engine_branch(ctx->game, turn_id, path, sizeof(path))) {
+        char msg[360];
+        snprintf(msg, sizeof(msg), "Branch created from session %s at turn %d: %s", ctx->game->session_id, turn_id, path);
+        set_status(ctx, msg);
+    }
     else set_status(ctx, "Time travel is disabled or branch failed.");
+}
+
+static gboolean on_board_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip, gpointer data) {
+    GuiCtx *ctx = data;
+    CfCoord c;
+    int p;
+    char sq[16], text[384];
+    (void)keyboard_mode;
+    if (!ctx->game || !screen_to_coord(ctx, widget, x, y, &c)) return FALSE;
+    p = cf_engine_piece_at(ctx->game, c);
+    if (p < 0) return FALSE;
+    cf_coord_to_string(&ctx->game->board, c, sq, sizeof(sq));
+    snprintf(text, sizeof(text), "%s\n%s\nController: %s\nSquare: %s\nState: %s%s%s",
+             ctx->game->pieces[p].identity,
+             ctx->game->houses[ctx->game->pieces[p].team].motto,
+             ctx->game->players[ctx->game->pieces[p].team * 3].name,
+             sq,
+             ctx->game->pieces[p].alive ? "alive" : "dead",
+             ctx->game->pieces[p].widow ? ", widow" : "",
+             ctx->game->pieces[p].frozen ? ", frozen" : "");
+    gtk_tooltip_set_text(tooltip, text);
+    return TRUE;
 }
 
 static void set_help(GuiCtx *ctx) {
     const char *help =
         "CrownFall: Dice Court\n\n"
+        "The Eight Houses:\n"
+        "House Albatross - Beyond All Horizons\n"
+        "House Dragon - Reality Yields\n"
+        "House Crocodile - Patience Consumes\n"
+        "House Cobra - One Strike Suffices\n"
+        "House Owl - Knowledge Devours\n"
+        "House Eagle - None Escape Our Sight\n"
+        "House Wolf - Together We Hunt\n"
+        "House Lion - By Strength We Reign\n\n"
         "Boards: 2 teams use 9x9. 4 teams use a 15x15 cross with four 3x3 holes. 8 teams use two cross layers.\n\n"
-        "Setup: South, East, North, and West courts each receive a rotated legion. 8-team mode repeats this on L2.\n\n"
-        "Pieces: K king, Q queen, P prince, L love interest, R rook, N knight, B bishop, p pawn.\n\n"
+        "Setup: South, East, North, and West courts each receive a rotated House legion. 8-team mode repeats this on L2.\n\n"
+        "Pieces: K king, QL/QR queens, PL/PR crown princes, L love interest, RL/RR rooks, NL/NR knights, BL/BR bishops, p1-p6 pawns.\n\n"
         "Movement: kings and love interests move one square. Queens, rooks, bishops, and prince rook-moves are dice-limited. Knights jump. Princes also knight-jump. Pawns move forward and capture diagonally.\n\n"
         "Dice: roll Die A and Die B before sliding movement. The sum limits sliding distance.\n\n"
         "Royal rules: Prince cannot capture Prince. Queen can kill Prince. Prince can kill Queen unless Mercy Pact blocks it.\n\n"
-        "Mercy Pact, Bloodfall, Widow Queen, Sacred Intercession, Ascension, check/checkmate, and full replay remain advanced engine TODOs with logged extension points.\n\n"
+        "Mercy Pact: sparing a legally capturable enemy Prince twice forms a pact. Bloodfall, Widow Queen, Love Interest, Sacred Intercession, Ascension, check/checkmate, and full replay remain advanced engine TODOs with logged extension points.\n\n"
         "Time travel: branch creates a new branch session from a selected turn without mutating old logs.";
     gtk_text_buffer_set_text(ctx->help_buffer, help, -1);
 }
@@ -407,6 +542,7 @@ int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     GtkWidget *roll;
     GtkWidget *defaults;
     GtkWidget *randomize;
+    GtkWidget *random_empty;
     GuiCtx *ctx;
     int i;
     gtk_init(argc, argv);
@@ -415,12 +551,14 @@ int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     ctx->game = game;
     ctx->window = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
     ctx->notebook = GTK_WIDGET(gtk_builder_get_object(builder, "main_tabs"));
+    ctx->mode_combo = GTK_WIDGET(gtk_builder_get_object(builder, "mode_combo"));
     ctx->team_combo = GTK_WIDGET(gtk_builder_get_object(builder, "team_count_combo"));
     ctx->time_check = GTK_WIDGET(gtk_builder_get_object(builder, "time_travel_check"));
     ctx->turn_label = GTK_WIDGET(gtk_builder_get_object(builder, "turn_label"));
     ctx->dice_label = GTK_WIDGET(gtk_builder_get_object(builder, "dice_label"));
     ctx->status_label = GTK_WIDGET(gtk_builder_get_object(builder, "status_label"));
     ctx->branch_button = GTK_WIDGET(gtk_builder_get_object(builder, "branch_button"));
+    ctx->filter_combo = GTK_WIDGET(gtk_builder_get_object(builder, "log_filter_combo"));
     ctx->layer_box[0] = GTK_WIDGET(gtk_builder_get_object(builder, "layer1_box"));
     ctx->layer_box[1] = GTK_WIDGET(gtk_builder_get_object(builder, "layer2_box"));
     ctx->layer_area[0] = GTK_WIDGET(gtk_builder_get_object(builder, "layer1_area"));
@@ -433,7 +571,10 @@ int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     roll = GTK_WIDGET(gtk_builder_get_object(builder, "roll_button"));
     defaults = GTK_WIDGET(gtk_builder_get_object(builder, "default_names_button"));
     randomize = GTK_WIDGET(gtk_builder_get_object(builder, "random_names_button"));
+    random_empty = GTK_WIDGET(gtk_builder_get_object(builder, "random_empty_names_button"));
     gtk_combo_box_set_active(GTK_COMBO_BOX(ctx->team_combo), 0);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(ctx->mode_combo), 0);
+    if (ctx->filter_combo) gtk_combo_box_set_active(GTK_COMBO_BOX(ctx->filter_combo), 0);
     fill_default_names(ctx);
     set_help(ctx);
     g_signal_connect(ctx->window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -441,13 +582,16 @@ int cf_gui_run(CfGame *game, int *argc, char ***argv) {
     g_signal_connect(roll, "clicked", G_CALLBACK(on_roll), ctx);
     g_signal_connect(defaults, "clicked", G_CALLBACK(on_default_names), ctx);
     g_signal_connect(randomize, "clicked", G_CALLBACK(on_random_names), ctx);
+    if (random_empty) g_signal_connect(random_empty, "clicked", G_CALLBACK(on_random_names), ctx);
     g_signal_connect(ctx->branch_button, "clicked", G_CALLBACK(on_branch), ctx);
     for (i = 0; i < GUI_MAX_LAYER_AREAS; i++) {
         g_object_set_data(G_OBJECT(ctx->layer_area[i]), "layer-id", GINT_TO_POINTER(i));
         gtk_widget_set_size_request(ctx->layer_area[i], 520, 520);
         gtk_widget_add_events(ctx->layer_area[i], GDK_BUTTON_PRESS_MASK);
+        gtk_widget_set_has_tooltip(ctx->layer_area[i], TRUE);
         g_signal_connect(ctx->layer_area[i], "draw", G_CALLBACK(on_board_draw), ctx);
         g_signal_connect(ctx->layer_area[i], "button-press-event", G_CALLBACK(on_board_click), ctx);
+        g_signal_connect(ctx->layer_area[i], "query-tooltip", G_CALLBACK(on_board_tooltip), ctx);
     }
     gtk_widget_set_visible(ctx->branch_button, FALSE);
     gtk_widget_set_visible(ctx->layer_box[1], FALSE);

@@ -33,10 +33,10 @@ GUI startup collects:
 - mode: GUI or notation
 - team count: `2`, `4`, `6`, or `8`
 - time travel: `enable` or `disable`
-- team names
-- King, Left House, and Right House player names per team
+- active Houses
+- King, Left House, and Right House player names per House
 
-The GUI also provides deterministic random names and default court names so 8-team setup does not require typing all 24 player names.
+The GUI provides House defaults, deterministic role-aware random names, and blank-name autofill so 8-team setup does not require typing all 24 player names.
 
 Agent stdin protocol:
 
@@ -74,7 +74,7 @@ Snapshots are written to:
 logs/snapshots/latest.json
 ```
 
-Each log line is a JSON event with timestamp, session id, mode, team count, current player, and event details. Implemented event emission includes session start/end, config, team/player registration, turn start, dice roll, legal move generation, move attempt/success, capture, Bloodfall, Widow Freeze, branch creation, and session end. The GUI side pane mirrors human-readable events live. Advanced rule events are represented as clean extension points.
+Each log line is a JSON event with timestamp, session id, mode, team count, current player, current House, player role, player name, and event details. Implemented event emission includes session start/end, config, House/player registration, turn start, dice roll, legal move generation, move attempt/success, capture, Bloodfall, Widow Freeze, branch creation, and session end. The GUI side pane mirrors human-readable events live. Advanced rule events are represented as clean extension points.
 
 ## Implementation Notes
 
@@ -82,6 +82,8 @@ Each log line is a JSON event with timestamp, session id, mode, team count, curr
 - 4-team board: 15x15 cross board with four 3x3 corners unplayable, using South/East/North/West court-arm legion placement.
 - 8-team board: two 4-team cross-board layers shown side by side in GUI, `378` playable squares.
 - 6-team board: experimental WIP notice, no crash.
+- Canonical Houses are configured in `config/houses.json`; missing House PNGs in `assets/houses/` fall back to text/color placeholders.
+- GUI court arms show House names, mottos, and House colors.
 - Sliding pieces use dice sum after `roll`; if unrolled, a conservative limit of `1` is used.
 - GUI board rendering uses `GtkDrawingArea` and draws valid squares, invalid holes, court-zone coloring, coordinates, pieces, selected piece, legal moves, and last move.
 - GUI movement supports mouse select, legal move highlights, click-to-move, dice warning for sliding pieces, and live log refresh.

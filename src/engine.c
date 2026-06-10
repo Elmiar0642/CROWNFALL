@@ -9,6 +9,30 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct {
+    const char *name;
+    const char *motto;
+    const char *emblem;
+    const char *primary;
+    const char *secondary;
+    const char *asset;
+} HouseSeed;
+
+static const HouseSeed HOUSE_SEEDS[] = {
+    {"House Albatross", "Beyond All Horizons", "Albatross", "#102a43", "#9fc5d9", "assets/houses/albatross.png"},
+    {"House Dragon", "Reality Yields", "Dragon", "#8b1e1e", "#c4932f", "assets/houses/dragon.png"},
+    {"House Crocodile", "Patience Consumes", "Crocodile", "#173d2b", "#b08a2c", "assets/houses/crocodile.png"},
+    {"House Cobra", "One Strike Suffices", "Cobra", "#0f6b45", "#171717", "assets/houses/cobra.png"},
+    {"House Owl", "Knowledge Devours", "Owl", "#4a2c6f", "#b8bec8", "assets/houses/owl.png"},
+    {"House Eagle", "None Escape Our Sight", "Eagle", "#f2ead3", "#c9a227", "assets/houses/eagle.png"},
+    {"House Wolf", "Together We Hunt", "Wolf", "#1f355c", "#aab2bd", "assets/houses/wolf.png"},
+    {"House Lion", "By Strength We Reign", "Lion", "#101010", "#d6ad35", "assets/houses/lion.png"}
+};
+
+static const int MAP_2[] = {7, 1};
+static const int MAP_4[] = {7, 5, 1, 6};
+static const int MAP_8[] = {7, 5, 1, 6, 3, 2, 4, 0};
+
 const char *cf_piece_type_name(CfPieceType type) {
     switch (type) {
         case CF_PIECE_KING: return "King";
@@ -23,19 +47,167 @@ const char *cf_piece_type_name(CfPieceType type) {
     }
 }
 
-static CfPiece *add_piece(CfGame *g, int team, CfPieceType type, const char *label, int layer, int x, int y) {
+const char *cf_piece_role_name(CfPieceRole role) {
+    switch (role) {
+        case CF_ROLE_KING: return "King";
+        case CF_ROLE_QUEEN_LEFT: return "Left Queen";
+        case CF_ROLE_QUEEN_RIGHT: return "Right Queen";
+        case CF_ROLE_PRINCE_LEFT: return "Left Crown Prince";
+        case CF_ROLE_PRINCE_RIGHT: return "Right Crown Prince";
+        case CF_ROLE_LOVE_INTEREST: return "Loyal Love Interest";
+        case CF_ROLE_ROOK_LEFT: return "Left Rook";
+        case CF_ROLE_ROOK_RIGHT: return "Right Rook";
+        case CF_ROLE_KNIGHT_LEFT: return "Left Knight";
+        case CF_ROLE_KNIGHT_RIGHT: return "Right Knight";
+        case CF_ROLE_BISHOP_LEFT: return "Left Bishop";
+        case CF_ROLE_BISHOP_RIGHT: return "Right Bishop";
+        case CF_ROLE_PAWN_1: return "Pawn 1";
+        case CF_ROLE_PAWN_2: return "Pawn 2";
+        case CF_ROLE_PAWN_3: return "Pawn 3";
+        case CF_ROLE_PAWN_4: return "Pawn 4";
+        case CF_ROLE_PAWN_5: return "Pawn 5";
+        case CF_ROLE_PAWN_6: return "Pawn 6";
+        default: return "Unknown";
+    }
+}
+
+const CfHouse *cf_get_house_info(const CfGame *game, int team_id) {
+    if (!game || team_id < 0 || team_id >= game->house_count) return NULL;
+    return &game->houses[team_id];
+}
+
+int cf_get_active_houses(const CfGame *game, const CfHouse **out, int max) {
+    int i, n = 0;
+    if (!game || !out || max <= 0) return 0;
+    for (i = 0; i < game->house_count && n < max; i++) out[n++] = &game->houses[i];
+    return n;
+}
+
+const char *cf_get_piece_identity(const CfGame *game, int piece_id) {
+    if (!game || piece_id < 0 || piece_id >= game->piece_count) return "";
+    return game->pieces[piece_id].identity;
+}
+
+const char *cf_get_player_identity(const CfGame *game, int player_id) {
+    if (!game || player_id < 0 || player_id >= game->player_count) return "";
+    return game->players[player_id].name;
+}
+
+static void set_house(CfHouse *h, int team, const HouseSeed *seed, int layer, const char *court) {
+    memset(h, 0, sizeof(*h));
+    h->team_id = team + 1;
+    strncpy(h->house_name, seed->name, sizeof(h->house_name) - 1);
+    strncpy(h->motto, seed->motto, sizeof(h->motto) - 1);
+    strncpy(h->emblem, seed->emblem, sizeof(h->emblem) - 1);
+    strncpy(h->primary_color, seed->primary, sizeof(h->primary_color) - 1);
+    strncpy(h->secondary_color, seed->secondary, sizeof(h->secondary_color) - 1);
+    strncpy(h->asset_path, seed->asset, sizeof(h->asset_path) - 1);
+    h->default_layer = layer;
+    strncpy(h->default_court, court, sizeof(h->default_court) - 1);
+}
+
+static bool json_string_value(const char *start, const char *key, char *out, size_t out_size) {
+    char pattern[48];
+    const char *p, *q;
+    size_t n;
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+    p = strstr(start, pattern);
+    if (!p) return false;
+    p = strchr(p + strlen(pattern), ':');
+    if (!p) return false;
+    p = strchr(p, '"');
+    if (!p) return false;
+    q = strchr(p + 1, '"');
+    if (!q) return false;
+    n = (size_t)(q - p - 1);
+    if (n >= out_size) n = out_size - 1;
+    memcpy(out, p + 1, n);
+    out[n] = '\0';
+    return true;
+}
+
+static bool json_int_value(const char *start, const char *key, int *out) {
+    char pattern[48];
+    const char *p;
+    snprintf(pattern, sizeof(pattern), "\"%s\"", key);
+    p = strstr(start, pattern);
+    if (!p) return false;
+    p = strchr(p + strlen(pattern), ':');
+    if (!p) return false;
+    *out = atoi(p + 1);
+    return true;
+}
+
+static void load_houses_config(CfGame *g) {
+    FILE *f = fopen("config/houses.json", "r");
+    char data[12000];
+    size_t n;
+    const char *p;
+    if (!f) return;
+    n = fread(data, 1, sizeof(data) - 1, f);
+    fclose(f);
+    data[n] = '\0';
+    p = data;
+    while ((p = strstr(p, "\"team_id\"")) != NULL) {
+        int team = 0;
+        CfHouse tmp;
+        if (!json_int_value(p, "team_id", &team) || team < 1 || team > g->house_count) {
+            p += 9;
+            continue;
+        }
+        tmp = g->houses[team - 1];
+        json_string_value(p, "house_name", tmp.house_name, sizeof(tmp.house_name));
+        json_string_value(p, "motto", tmp.motto, sizeof(tmp.motto));
+        json_string_value(p, "emblem", tmp.emblem, sizeof(tmp.emblem));
+        json_string_value(p, "primary_color", tmp.primary_color, sizeof(tmp.primary_color));
+        json_string_value(p, "secondary_color", tmp.secondary_color, sizeof(tmp.secondary_color));
+        json_string_value(p, "asset_path", tmp.asset_path, sizeof(tmp.asset_path));
+        json_string_value(p, "default_court", tmp.default_court, sizeof(tmp.default_court));
+        json_int_value(p, "default_layer", &tmp.default_layer);
+        g->houses[team - 1] = tmp;
+        if (!g->config.team_names[team - 1][0]) strncpy(g->config.team_names[team - 1], tmp.house_name, CF_MAX_NAME - 1);
+        p += 9;
+    }
+}
+
+static void load_builtin_houses(CfGame *g) {
+    static const char *courts[] = {"South", "East", "North", "West", "South", "East", "North", "West"};
+    const int *map = g->config.team_count == 2 ? MAP_2 : g->config.team_count == 4 ? MAP_4 : MAP_8;
+    int i;
+    g->house_count = g->config.team_count;
+    for (i = 0; i < g->house_count; i++) {
+        int layer = i >= 4 ? 1 : 0;
+        set_house(&g->houses[i], i, &HOUSE_SEEDS[map[i]], layer, courts[i]);
+    }
+    load_houses_config(g);
+    if (g->config.team_count == 2) {
+        set_house(&g->houses[0], 0, &HOUSE_SEEDS[7], 0, "South");
+        set_house(&g->houses[1], 1, &HOUSE_SEEDS[1], 0, "North");
+        strncpy(g->config.team_names[0], g->houses[0].house_name, CF_MAX_NAME - 1);
+        strncpy(g->config.team_names[1], g->houses[1].house_name, CF_MAX_NAME - 1);
+    }
+    for (i = 0; i < g->house_count; i++) {
+        if (!g->config.team_names[i][0]) strncpy(g->config.team_names[i], g->houses[i].house_name, CF_MAX_NAME - 1);
+    }
+}
+
+static CfPiece *add_piece(CfGame *g, int team, CfPieceType type, CfPieceRole role, const char *label, int layer, int x, int y) {
     CfPiece *p;
+    const CfHouse *h;
     if (g->piece_count >= CF_MAX_PIECES) return NULL;
     p = &g->pieces[g->piece_count];
     memset(p, 0, sizeof(*p));
     p->id = g->piece_count;
     p->team = team;
     p->type = type;
+    p->role = role;
     strncpy(p->label, label, sizeof(p->label) - 1);
     p->pos.layer = layer;
     p->pos.x = x;
     p->pos.y = y;
     p->alive = cf_board_is_playable(&g->board, p->pos);
+    h = cf_get_house_info(g, team);
+    snprintf(p->identity, sizeof(p->identity), "%s of %s", cf_piece_role_name(role), h ? h->house_name : "Unknown House");
     g->piece_count++;
     return p;
 }
@@ -53,7 +225,8 @@ static void setup_players(CfGame *g) {
             if (g->config.player_names[p->player_id][0]) {
                 strncpy(p->name, g->config.player_names[p->player_id], sizeof(p->name) - 1);
             } else {
-                snprintf(p->name, sizeof(p->name), "Team%d %s", t + 1, roles[r]);
+                const CfHouse *h = cf_get_house_info(g, t);
+                snprintf(p->name, sizeof(p->name), "%.44s %.18s", h ? h->house_name : "House", roles[r]);
             }
             g->player_count++;
         }
@@ -69,22 +242,23 @@ typedef enum {
 
 typedef struct {
     CfPieceType type;
+    CfPieceRole role;
     const char *label;
     int col;
     int row;
 } CfTemplatePiece;
 
 static const CfTemplatePiece LEGION_TEMPLATE[] = {
-    {CF_PIECE_ROOK, "R1", 0, 0}, {CF_PIECE_KNIGHT, "N1", 1, 0},
-    {CF_PIECE_BISHOP, "B1", 2, 0}, {CF_PIECE_QUEEN, "QL", 3, 0},
-    {CF_PIECE_KING, "K", 4, 0}, {CF_PIECE_QUEEN, "QR", 5, 0},
-    {CF_PIECE_BISHOP, "B2", 6, 0}, {CF_PIECE_KNIGHT, "N2", 7, 0},
-    {CF_PIECE_ROOK, "R2", 8, 0},
-    {CF_PIECE_PAWN, "p1", 1, 1}, {CF_PIECE_PAWN, "p2", 2, 1},
-    {CF_PIECE_PRINCE, "PL", 3, 1}, {CF_PIECE_LOVE, "L", 4, 1},
-    {CF_PIECE_PRINCE, "PR", 5, 1}, {CF_PIECE_PAWN, "p5", 6, 1},
-    {CF_PIECE_PAWN, "p6", 7, 1},
-    {CF_PIECE_PAWN, "p3", 3, 2}, {CF_PIECE_PAWN, "p4", 5, 2}
+    {CF_PIECE_ROOK, CF_ROLE_ROOK_LEFT, "RL", 0, 0}, {CF_PIECE_KNIGHT, CF_ROLE_KNIGHT_LEFT, "NL", 1, 0},
+    {CF_PIECE_BISHOP, CF_ROLE_BISHOP_LEFT, "BL", 2, 0}, {CF_PIECE_QUEEN, CF_ROLE_QUEEN_LEFT, "QL", 3, 0},
+    {CF_PIECE_KING, CF_ROLE_KING, "K", 4, 0}, {CF_PIECE_QUEEN, CF_ROLE_QUEEN_RIGHT, "QR", 5, 0},
+    {CF_PIECE_BISHOP, CF_ROLE_BISHOP_RIGHT, "BR", 6, 0}, {CF_PIECE_KNIGHT, CF_ROLE_KNIGHT_RIGHT, "NR", 7, 0},
+    {CF_PIECE_ROOK, CF_ROLE_ROOK_RIGHT, "RR", 8, 0},
+    {CF_PIECE_PAWN, CF_ROLE_PAWN_1, "p1", 1, 1}, {CF_PIECE_PAWN, CF_ROLE_PAWN_2, "p2", 2, 1},
+    {CF_PIECE_PRINCE, CF_ROLE_PRINCE_LEFT, "PL", 3, 1}, {CF_PIECE_LOVE, CF_ROLE_LOVE_INTEREST, "L", 4, 1},
+    {CF_PIECE_PRINCE, CF_ROLE_PRINCE_RIGHT, "PR", 5, 1}, {CF_PIECE_PAWN, CF_ROLE_PAWN_5, "p5", 6, 1},
+    {CF_PIECE_PAWN, CF_ROLE_PAWN_6, "p6", 7, 1},
+    {CF_PIECE_PAWN, CF_ROLE_PAWN_3, "p3", 3, 2}, {CF_PIECE_PAWN, CF_ROLE_PAWN_4, "p4", 5, 2}
 };
 
 static void rotate_template_coord(CfCourtDirection court, int col, int row, int *x, int *y) {
@@ -114,7 +288,7 @@ static void setup_team_2(CfGame *g, int team, int layer, int back_y) {
     for (i = 0; i < (int)(sizeof(LEGION_TEMPLATE) / sizeof(LEGION_TEMPLATE[0])); i++) {
         int x = LEGION_TEMPLATE[i].col;
         int y = back_y + LEGION_TEMPLATE[i].row * forward;
-        add_piece(g, team, LEGION_TEMPLATE[i].type, LEGION_TEMPLATE[i].label, layer, x, y);
+        add_piece(g, team, LEGION_TEMPLATE[i].type, LEGION_TEMPLATE[i].role, LEGION_TEMPLATE[i].label, layer, x, y);
     }
 }
 
@@ -123,7 +297,7 @@ static void board_place_legion(CfGame *g, int team, int layer, CfCourtDirection 
     for (i = 0; i < (int)(sizeof(LEGION_TEMPLATE) / sizeof(LEGION_TEMPLATE[0])); i++) {
         int x = 0, y = 0;
         rotate_template_coord(court, LEGION_TEMPLATE[i].col, LEGION_TEMPLATE[i].row, &x, &y);
-        add_piece(g, team, LEGION_TEMPLATE[i].type, LEGION_TEMPLATE[i].label, layer, x, y);
+        add_piece(g, team, LEGION_TEMPLATE[i].type, LEGION_TEMPLATE[i].role, LEGION_TEMPLATE[i].label, layer, x, y);
     }
 }
 
@@ -152,6 +326,7 @@ CfGame *cf_engine_new(const CfConfig *config) {
     if (!g) return NULL;
     if (config) g->config = *config;
     if (g->config.team_count == 0) g->config.team_count = 2;
+    load_builtin_houses(g);
     cf_board_init(&g->board, g->config.team_count);
     cf_dice_seed(0);
     setup_players(g);
@@ -165,14 +340,15 @@ CfGame *cf_engine_new(const CfConfig *config) {
     for (i = 0; i < g->config.team_count; i++) {
         char name[CF_MAX_NAME * 2];
         cf_json_escape(g->config.team_names[i], name, sizeof(name));
-        snprintf(fields, sizeof(fields), "\"team\":%d,\"name\":\"%s\"", i, name);
+        snprintf(fields, sizeof(fields), "\"registered_team_id\":%d,\"registered_house_name\":\"%s\",\"motto\":\"%s\",\"emblem\":\"%s\",\"court\":\"%s\",\"layer\":%d",
+                 i + 1, name, g->houses[i].motto, g->houses[i].emblem, g->houses[i].default_court, g->houses[i].default_layer + 1);
         cf_log_event(g, "team_registered", fields);
     }
     for (i = 0; i < g->player_count; i++) {
         char name[CF_MAX_NAME * 2];
         cf_json_escape(g->players[i].name, name, sizeof(name));
-        snprintf(fields, sizeof(fields), "\"player_id\":%d,\"team\":%d,\"role\":\"%s\",\"name\":\"%s\"",
-                 g->players[i].player_id, g->players[i].team, g->players[i].role, name);
+        snprintf(fields, sizeof(fields), "\"player_id\":%d,\"registered_team_id\":%d,\"registered_house_name\":\"%s\",\"registered_player_role\":\"%s\",\"registered_player_name\":\"%s\"",
+                 g->players[i].player_id, g->players[i].team + 1, g->houses[g->players[i].team].house_name, g->players[i].role, name);
         cf_log_event(g, "player_registered", fields);
     }
     cf_engine_start_turn(g);
@@ -187,14 +363,14 @@ void cf_engine_free(CfGame *game) {
 }
 
 void cf_engine_start_turn(CfGame *game) {
-    char fields[256];
+    char fields[768];
     CfPlayer *p;
     if (!game || game->player_count == 0) return;
     p = &game->players[game->current_player];
     game->dice_rolled = false;
     game->die_a = game->die_b = game->dice_sum = 0;
-    snprintf(fields, sizeof(fields), "\"player_id\":%d,\"player\":\"%s\",\"team\":%d,\"role\":\"%s\"",
-             p->player_id, p->name, p->team, p->role);
+    snprintf(fields, sizeof(fields), "\"player_id\":%d,\"human_readable_summary\":\"%s %s turn started.\"",
+             p->player_id, game->houses[p->team].house_name, p->role);
     cf_log_event(game, "turn_start", fields);
 }
 
@@ -210,26 +386,29 @@ int cf_engine_piece_at(const CfGame *game, CfCoord c) {
 
 int cf_engine_generate_moves(CfGame *game, int player_id, CfCoord from, CfMove *moves, int max_moves) {
     int idx;
-    char sq[16], fields[128];
+    char sq[16], fields[512];
     if (!game || player_id < 0 || player_id >= game->player_count) return 0;
     idx = cf_engine_piece_at(game, from);
     if (idx < 0 || game->pieces[idx].team != game->players[player_id].team) return 0;
     idx = cf_movegen_for_piece(game, &game->pieces[idx], moves, max_moves);
     cf_coord_to_string(&game->board, from, sq, sizeof(sq));
-    snprintf(fields, sizeof(fields), "\"player_id\":%d,\"square\":\"%s\",\"count\":%d", player_id, sq, idx);
+    snprintf(fields, sizeof(fields), "\"player_id\":%d,\"square\":\"%s\",\"count\":%d,\"human_readable_summary\":\"Legal moves shown for %s.\"",
+             player_id, sq, idx, sq);
     cf_log_event(game, "legal_moves_generated", fields);
     return idx;
 }
 
 static void handle_capture(CfGame *g, CfPiece *attacker, CfPiece *target) {
-    char fields[256];
+    char fields[768];
     target->alive = false;
-    snprintf(fields, sizeof(fields), "\"attacker\":%d,\"captured\":%d,\"piece\":\"%s\"",
-             attacker->id, target->id, target->label);
+    snprintf(fields, sizeof(fields), "\"attacker\":%d,\"captured\":%d,\"captured_team_id\":%d,\"captured_house_name\":\"%s\",\"piece_id\":%d,\"piece_role\":\"%s\",\"human_readable_summary\":\"%s captured %s.\"",
+             attacker->id, target->id, target->team + 1, g->houses[target->team].house_name, target->id,
+             cf_piece_role_name(target->role), attacker->identity, target->identity);
     cf_log_event(g, "capture", fields);
     if (target->type == CF_PIECE_PRINCE) {
         g->bloodfall[target->team] = true;
-        snprintf(fields, sizeof(fields), "\"team\":%d,\"prince_id\":%d", target->team, target->id);
+        snprintf(fields, sizeof(fields), "\"fallen_team_id\":%d,\"fallen_house_name\":\"%s\",\"prince_id\":%d,\"piece_role\":\"%s\",\"human_readable_summary\":\"Bloodfall: %s has fallen.\"",
+                 target->team + 1, g->houses[target->team].house_name, target->id, cf_piece_role_name(target->role), target->identity);
         cf_log_event(g, "bloodfall", fields);
         cf_log_event(g, "widow_freeze", fields);
     }
@@ -237,7 +416,7 @@ static void handle_capture(CfGame *g, CfPiece *attacker, CfPiece *target) {
 
 bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_size) {
     int idx, cap;
-    char a[16], b[16], fields[256];
+    char a[16], b[16], fields[768];
     if (!game || !move) return false;
     idx = cf_engine_piece_at(game, move->from);
     if (idx < 0) {
@@ -247,7 +426,8 @@ bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_s
     cap = cf_engine_piece_at(game, move->to);
     cf_coord_to_string(&game->board, move->from, a, sizeof(a));
     cf_coord_to_string(&game->board, move->to, b, sizeof(b));
-    snprintf(fields, sizeof(fields), "\"from\":\"%s\",\"to\":\"%s\",\"piece\":%d", a, b, game->pieces[idx].id);
+    snprintf(fields, sizeof(fields), "\"piece_id\":%d,\"piece_role\":\"%s\",\"from\":\"%s\",\"to\":\"%s\",\"human_readable_summary\":\"%s attempted %s to %s.\"",
+             game->pieces[idx].id, cf_piece_role_name(game->pieces[idx].role), a, b, game->pieces[idx].identity, a, b);
     cf_log_event(game, "move_attempt", fields);
     if (cap >= 0 && !cf_rules_can_capture(game, &game->pieces[idx], &game->pieces[cap])) {
         snprintf(err, (size_t)err_size, "capture blocked by royal rule");
@@ -255,6 +435,8 @@ bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_s
     }
     if (cap >= 0) handle_capture(game, &game->pieces[idx], &game->pieces[cap]);
     game->pieces[idx].pos = move->to;
+    snprintf(fields, sizeof(fields), "\"piece_id\":%d,\"piece_role\":\"%s\",\"from\":\"%s\",\"to\":\"%s\",\"human_readable_summary\":\"%s moved %s to %s.\"",
+             game->pieces[idx].id, cf_piece_role_name(game->pieces[idx].role), a, b, game->pieces[idx].identity, a, b);
     cf_log_event(game, "move_success", fields);
     if (!cf_rules_repetition_legal(game)) {
         snprintf(err, (size_t)err_size, "fourth repetition is illegal");
@@ -282,14 +464,23 @@ void cf_engine_print_board(const CfGame *game, FILE *out) {
             for (x = 0; x < game->board.size; x++) {
                 CfCoord c = {l, x, y};
                 int p = cf_engine_piece_at(game, c);
-                if (!cf_board_is_playable(&game->board, c)) fprintf(out, " ##");
-                else if (p >= 0) fprintf(out, " %c%d", game->pieces[p].label[0], game->pieces[p].team + 1);
-                else fprintf(out, " ..");
+                if (!cf_board_is_playable(&game->board, c)) fprintf(out, " ####");
+                else if (p >= 0) {
+                    char s[16];
+                    const CfPiece *piece = &game->pieces[p];
+                    if (piece->role == CF_ROLE_QUEEN_LEFT) snprintf(s, sizeof(s), "Q%dL", piece->team + 1);
+                    else if (piece->role == CF_ROLE_QUEEN_RIGHT) snprintf(s, sizeof(s), "Q%dR", piece->team + 1);
+                    else if (piece->role == CF_ROLE_PRINCE_LEFT) snprintf(s, sizeof(s), "P%dL", piece->team + 1);
+                    else if (piece->role == CF_ROLE_PRINCE_RIGHT) snprintf(s, sizeof(s), "P%dR", piece->team + 1);
+                    else if (piece->type == CF_PIECE_PAWN) snprintf(s, sizeof(s), "%s", piece->label);
+                    else snprintf(s, sizeof(s), "%s%d", piece->label, piece->team + 1);
+                    fprintf(out, " %4s", s);
+                } else fprintf(out, "   ..");
             }
             fprintf(out, "\n");
         }
         fprintf(out, "   ");
-        for (x = 0; x < game->board.size; x++) fprintf(out, " %c ", 'a' + x);
+        for (x = 0; x < game->board.size; x++) fprintf(out, "  %c  ", 'a' + x);
         fprintf(out, "\n\n");
     }
 }
@@ -298,8 +489,8 @@ void cf_engine_print_state(const CfGame *game, FILE *out) {
     const CfPlayer *p;
     if (!game) return;
     p = &game->players[game->current_player];
-    fprintf(out, "Session: %s\nTurn: %d\nPlayer: %s (team %d, %s)\nDice: %d + %d = %d%s\nLog: %s\n",
-            game->session_id, game->turn_id, p->name, p->team + 1, p->role,
+    fprintf(out, "Session: %s\nTurn: %d\nHouse: %s\nPlayer: %s (%s)\nDice: %d + %d = %d%s\nLog: %s\n",
+            game->session_id, game->turn_id, game->houses[p->team].house_name, p->name, p->role,
             game->die_a, game->die_b, game->dice_sum, game->dice_rolled ? "" : " (not rolled)", game->log_path);
     if (game->board.layout == CF_LAYOUT_6T_WIP) fprintf(out, "Notice: 6-team dynamic layout is WIP; using experimental cross board.\n");
 }

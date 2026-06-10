@@ -60,7 +60,7 @@
                 </child>
                 <child>
                   <object class="GtkLabel" id="team_names_label">
-                    <property name="label">Team names</property>
+                    <property name="label">Active Houses</property>
                     <property name="halign">start</property>
                   </object>
                   <packing><property name="left-attach">0</property><property name="top-attach">1</property></packing>
@@ -80,7 +80,7 @@
                 </child>
                 <child>
                   <object class="GtkLabel" id="player_names_label">
-                    <property name="label">Player names: King, Left House, Right House per team</property>
+                    <property name="label">Player names: King, Left House, Right House per House</property>
                     <property name="halign">start</property>
                   </object>
                   <packing><property name="left-attach">3</property><property name="top-attach">1</property></packing>
@@ -100,21 +100,27 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="random_names_button">
-                    <property name="label">Randomize All Names</property>
+                    <property name="label">Randomize All Player Names</property>
                   </object>
                   <packing><property name="left-attach">0</property><property name="top-attach">3</property></packing>
                 </child>
                 <child>
                   <object class="GtkButton" id="default_names_button">
-                    <property name="label">Use Default Names</property>
+                    <property name="label">Use House Defaults</property>
                   </object>
                   <packing><property name="left-attach">1</property><property name="top-attach">3</property></packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="random_empty_names_button">
+                    <property name="label">Randomize Empty Names</property>
+                  </object>
+                  <packing><property name="left-attach">2</property><property name="top-attach">3</property></packing>
                 </child>
                 <child>
                   <object class="GtkButton" id="start_button">
                     <property name="label">Continue</property>
                   </object>
-                  <packing><property name="left-attach">2</property><property name="top-attach">3</property></packing>
+                  <packing><property name="left-attach">3</property><property name="top-attach">3</property></packing>
                 </child>
               </object>
               <packing><property name="tab-label">Setup</property></packing>
@@ -131,6 +137,7 @@
                     <property name="orientation">horizontal</property>
                     <property name="spacing">6</property>
                     <child><object class="GtkButton" id="roll_button"><property name="label">Roll Dice</property></object></child>
+                    <child><object class="GtkButton" id="undo_button"><property name="label">Undo</property><property name="sensitive">false</property></object></child>
                     <child><object class="GtkButton" id="branch_button"><property name="label">Branch From Turn</property></object></child>
                   </object>
                 </child>
@@ -169,7 +176,26 @@
                         <property name="width-request">320</property>
                         <property name="hexpand">false</property>
                         <property name="vexpand">true</property>
-                        <child><object class="GtkTextView" id="log_view"><property name="editable">false</property><property name="monospace">true</property></object></child>
+                        <child>
+                          <object class="GtkBox" id="log_box">
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">6</property>
+                            <child>
+                              <object class="GtkComboBoxText" id="log_filter_combo">
+                                <items>
+                                  <item id="all">All</item>
+                                  <item id="moves">Moves</item>
+                                  <item id="dice">Dice</item>
+                                  <item id="captures">Captures</item>
+                                  <item id="mercy">Mercy/Pacts</item>
+                                  <item id="bloodfall">Bloodfall/Ascension</item>
+                                  <item id="errors">Errors</item>
+                                </items>
+                              </object>
+                            </child>
+                            <child><object class="GtkTextView" id="log_view"><property name="editable">false</property><property name="monospace">true</property><property name="vexpand">true</property></object></child>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>
