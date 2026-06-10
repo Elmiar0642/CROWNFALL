@@ -42,11 +42,30 @@ static int slide(CfGame *game, const CfPiece *piece, int dx, int dy, CfMove *mov
     return count;
 }
 
-static int team_forward(const CfGame *game, int team) {
-    if (game->config.team_count == 2) return team == 0 ? 1 : -1;
-    if (team == 0 || team == 1) return 1;
-    if (team == 2 || team == 3) return -1;
-    return team % 2 == 0 ? 1 : -1;
+static void team_forward_delta(const CfGame *game, int team, int *dx, int *dy) {
+    *dx = 0;
+    *dy = 0;
+    if (game->config.team_count == 2) {
+        *dy = team == 0 ? 1 : -1;
+        return;
+    }
+    switch (team % 4) {
+        case 0: *dy = 1; break;
+        case 1: *dx = -1; break;
+        case 2: *dy = -1; break;
+        case 3: *dx = 1; break;
+    }
+}
+
+static bool pawn_on_start_row(const CfGame *game, const CfPiece *piece) {
+    if (game->config.team_count == 2) return (piece->team == 0 && piece->pos.y == 1) || (piece->team == 1 && piece->pos.y == 7);
+    switch (piece->team % 4) {
+        case 0: return piece->pos.y == 1;
+        case 1: return piece->pos.x == 13;
+        case 2: return piece->pos.y == 13;
+        case 3: return piece->pos.x == 1;
+    }
+    return false;
 }
 
 int cf_movegen_for_piece(CfGame *game, const CfPiece *piece, CfMove *moves, int max_moves) {
@@ -79,19 +98,21 @@ int cf_movegen_for_piece(CfGame *game, const CfPiece *piece, CfMove *moves, int 
             count += add_move(game, piece, to, moves + count, max_moves - count);
         }
     } else if (piece->type == CF_PIECE_PAWN) {
-        int f = team_forward(game, piece->team);
-        CfCoord one = {piece->pos.layer, piece->pos.x, piece->pos.y + f};
+        int fx, fy;
+        team_forward_delta(game, piece->team, &fx, &fy);
+        CfCoord one = {piece->pos.layer, piece->pos.x + fx, piece->pos.y + fy};
         if (cf_board_is_playable(&game->board, one) && cf_engine_piece_at(game, one) < 0) {
             count += add_move(game, piece, one, moves + count, max_moves - count);
-            if ((piece->team == 0 && piece->pos.y <= 1) || (piece->team != 0 && piece->pos.y >= game->board.size - 2)) {
-                CfCoord two = {piece->pos.layer, piece->pos.x, piece->pos.y + 2 * f};
+            if (pawn_on_start_row(game, piece)) {
+                CfCoord two = {piece->pos.layer, piece->pos.x + 2 * fx, piece->pos.y + 2 * fy};
                 if (cf_board_is_playable(&game->board, two) && cf_engine_piece_at(game, two) < 0) {
                     count += add_move(game, piece, two, moves + count, max_moves - count);
                 }
             }
         }
         for (i = -1; i <= 1; i += 2) {
-            CfCoord cap = {piece->pos.layer, piece->pos.x + i, piece->pos.y + f};
+            CfCoord cap = fx ? (CfCoord){piece->pos.layer, piece->pos.x + fx, piece->pos.y + i}
+                             : (CfCoord){piece->pos.layer, piece->pos.x + i, piece->pos.y + fy};
             int occ = cf_engine_piece_at(game, cap);
             if (occ >= 0 && game->pieces[occ].team != piece->team) {
                 count += add_move(game, piece, cap, moves + count, max_moves - count);

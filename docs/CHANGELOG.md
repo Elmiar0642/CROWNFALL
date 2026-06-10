@@ -157,3 +157,21 @@ Created `crownfall_engine` as a C11/Makefile project.
   - Allows clicking another own piece to switch selection.
   - Shows legal destination coordinates when an illegal destination is clicked.
   - Draws House court labels underneath pieces instead of over them.
+
+## 2026-06-10 Rules Spec v0.1 Engine Alignment
+
+### Changed Files
+
+- `src/engine.c:217:1`
+  - Changed player creation to role-round turn order: all Kings by team, then all Left Houses, then all Right Houses.
+  - Added `cf_engine_player_controls_piece` so King/Left/Right controller roles only move their own royal pieces plus shared army pieces.
+  - Restored the official v0.1 9x3 legion template: middle-row pawns on files 1,2,6,7 and front-row pawns on files 3 and 5.
+  - Enforces dice rolled before move application.
+  - Logs `illegal_move` and `check` events.
+- `src/movegen.c:45:1`
+  - Added court-aware pawn forward direction for South, East, North, and West courts.
+- `src/rules.c:6:1`, `src/rules.h:6:1`
+  - Added king-safety filtering, enemy control maps with slider range 7, check detection, and direct King capture prevention.
+  - Added Love Interest normal royal-capture restriction.
+- `src/gui.c:395:1`
+  - Selection status now tells the player to roll dice before moving when dice are not rolled.

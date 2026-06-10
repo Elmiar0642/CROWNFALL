@@ -402,9 +402,14 @@ static void select_gui_piece(GuiCtx *ctx, CfCoord c, int p) {
     ctx->legal_count = cf_engine_generate_moves(ctx->game, ctx->game->current_player, c, ctx->legal_moves, CF_MAX_MOVES);
     cf_coord_to_string(&ctx->game->board, c, sq, sizeof(sq));
     piece_label(&ctx->game->pieces[p], label, sizeof(label));
-    snprintf(msg, sizeof(msg), "[Turn %d] %s selected %s at %s. %d legal move%s shown.",
-             ctx->game->turn_id, ctx->game->houses[ctx->game->pieces[p].team].house_name, label, sq,
-             ctx->legal_count, ctx->legal_count == 1 ? "" : "s");
+    if (!ctx->game->dice_rolled) {
+        snprintf(msg, sizeof(msg), "[Turn %d] %s selected %s at %s. Roll dice before moving.",
+                 ctx->game->turn_id, ctx->game->houses[ctx->game->pieces[p].team].house_name, label, sq);
+    } else {
+        snprintf(msg, sizeof(msg), "[Turn %d] %s selected %s at %s. %d legal move%s shown.",
+                 ctx->game->turn_id, ctx->game->houses[ctx->game->pieces[p].team].house_name, label, sq,
+                 ctx->legal_count, ctx->legal_count == 1 ? "" : "s");
+    }
     snprintf(fields, sizeof(fields), "\"piece_id\":%d,\"piece_role\":\"%s\",\"square\":\"%s\",\"legal_count\":%d,\"human_readable_summary\":\"%s\"",
              ctx->game->pieces[p].id, cf_piece_role_name(ctx->game->pieces[p].role), sq, ctx->legal_count, msg);
     cf_log_event(ctx->game, "piece_selected", fields);

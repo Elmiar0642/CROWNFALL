@@ -92,6 +92,7 @@ typedef struct {
 typedef struct {
     int team_count;
     bool time_travel;
+    bool strict_pact_debt;
     char mode[16];
     char team_names[CF_MAX_TEAMS][CF_MAX_NAME];
     char player_names[CF_MAX_PLAYERS][CF_MAX_NAME];
@@ -140,6 +141,7 @@ const CfHouse *cf_get_house_info(const CfGame *game, int team_id);
 int cf_get_active_houses(const CfGame *game, const CfHouse **out, int max);
 const char *cf_get_piece_identity(const CfGame *game, int piece_id);
 const char *cf_get_player_identity(const CfGame *game, int player_id);
+bool cf_engine_player_controls_piece(const CfPlayer *player, const CfPiece *piece);
 CfGame *cf_engine_new(const CfConfig *config);
 void cf_engine_free(CfGame *game);
 void cf_engine_start_turn(CfGame *game);

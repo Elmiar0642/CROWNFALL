@@ -93,6 +93,10 @@ int cf_cli_run(CfGame *game) {
             CfCoord from;
             CfMove moves[CF_MAX_MOVES];
             int i, n;
+            if (!game->dice_rolled) {
+                puts("Roll dice before generating legal moves.");
+                continue;
+            }
             if (!cf_parse_coord(&game->board, line + 6, &from)) {
                 puts("Invalid or unplayable square.");
                 continue;
@@ -104,6 +108,10 @@ int cf_cli_run(CfGame *game) {
             char a[32], b[32], err[128];
             CfCoord from, to;
             CfMove move;
+            if (!game->dice_rolled) {
+                puts("Roll dice before moving.");
+                continue;
+            }
             if (sscanf(line + 5, "%31s %31s", a, b) != 2 ||
                 !cf_parse_coord(&game->board, a, &from) ||
                 !cf_parse_coord(&game->board, b, &to)) {

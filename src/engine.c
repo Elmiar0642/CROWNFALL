@@ -213,17 +213,18 @@ static CfPiece *add_piece(CfGame *g, int team, CfPieceType type, CfPieceRole rol
 }
 
 static void setup_players(CfGame *g) {
-    int t;
+    int r;
     const char *roles[3] = {"King", "Left House", "Right House"};
-    for (t = 0; t < g->config.team_count; t++) {
-        int r;
-        for (r = 0; r < 3; r++) {
+    for (r = 0; r < 3; r++) {
+        int t;
+        for (t = 0; t < g->config.team_count; t++) {
             CfPlayer *p = &g->players[g->player_count];
+            int config_index = t * 3 + r;
             p->player_id = g->player_count;
             p->team = t;
             strncpy(p->role, roles[r], sizeof(p->role) - 1);
-            if (g->config.player_names[p->player_id][0]) {
-                strncpy(p->name, g->config.player_names[p->player_id], sizeof(p->name) - 1);
+            if (g->config.player_names[config_index][0]) {
+                strncpy(p->name, g->config.player_names[config_index], sizeof(p->name) - 1);
             } else {
                 const CfHouse *h = cf_get_house_info(g, t);
                 snprintf(p->name, sizeof(p->name), "%.44s %.18s", h ? h->house_name : "House", roles[r]);
@@ -254,11 +255,11 @@ static const CfTemplatePiece LEGION_TEMPLATE[] = {
     {CF_PIECE_KING, CF_ROLE_KING, "K", 4, 0}, {CF_PIECE_QUEEN, CF_ROLE_QUEEN_RIGHT, "QR", 5, 0},
     {CF_PIECE_BISHOP, CF_ROLE_BISHOP_RIGHT, "BR", 6, 0}, {CF_PIECE_KNIGHT, CF_ROLE_KNIGHT_RIGHT, "NR", 7, 0},
     {CF_PIECE_ROOK, CF_ROLE_ROOK_RIGHT, "RR", 8, 0},
-    {CF_PIECE_PAWN, CF_ROLE_PAWN_1, "p1", 0, 1}, {CF_PIECE_PAWN, CF_ROLE_PAWN_2, "p2", 1, 1},
-    {CF_PIECE_PAWN, CF_ROLE_PAWN_3, "p3", 2, 1}, {CF_PIECE_PRINCE, CF_ROLE_PRINCE_LEFT, "PL", 3, 1},
-    {CF_PIECE_LOVE, CF_ROLE_LOVE_INTEREST, "L", 4, 1}, {CF_PIECE_PRINCE, CF_ROLE_PRINCE_RIGHT, "PR", 5, 1},
-    {CF_PIECE_PAWN, CF_ROLE_PAWN_4, "p4", 6, 1}, {CF_PIECE_PAWN, CF_ROLE_PAWN_5, "p5", 7, 1},
-    {CF_PIECE_PAWN, CF_ROLE_PAWN_6, "p6", 8, 1}
+    {CF_PIECE_PAWN, CF_ROLE_PAWN_1, "p1", 1, 1}, {CF_PIECE_PAWN, CF_ROLE_PAWN_2, "p2", 2, 1},
+    {CF_PIECE_PRINCE, CF_ROLE_PRINCE_LEFT, "PL", 3, 1}, {CF_PIECE_LOVE, CF_ROLE_LOVE_INTEREST, "L", 4, 1},
+    {CF_PIECE_PRINCE, CF_ROLE_PRINCE_RIGHT, "PR", 5, 1}, {CF_PIECE_PAWN, CF_ROLE_PAWN_3, "p3", 6, 1},
+    {CF_PIECE_PAWN, CF_ROLE_PAWN_4, "p4", 7, 1},
+    {CF_PIECE_PAWN, CF_ROLE_PAWN_5, "p5", 3, 2}, {CF_PIECE_PAWN, CF_ROLE_PAWN_6, "p6", 5, 2}
 };
 
 static void rotate_template_coord(CfCourtDirection court, int col, int row, int *x, int *y) {
@@ -317,6 +318,22 @@ static void setup_pieces(CfGame *g) {
         board_place_legion(g, 6, 1, CF_COURT_NORTH);
         board_place_legion(g, 7, 1, CF_COURT_WEST);
     }
+}
+
+bool cf_engine_player_controls_piece(const CfPlayer *player, const CfPiece *piece) {
+    if (!player || !piece || player->team != piece->team) return false;
+    if (piece->type == CF_PIECE_ROOK || piece->type == CF_PIECE_KNIGHT ||
+        piece->type == CF_PIECE_BISHOP || piece->type == CF_PIECE_PAWN) return true;
+    if (strcmp(player->role, "King") == 0) {
+        return piece->role == CF_ROLE_KING || piece->role == CF_ROLE_LOVE_INTEREST;
+    }
+    if (strcmp(player->role, "Left House") == 0) {
+        return piece->role == CF_ROLE_QUEEN_LEFT || piece->role == CF_ROLE_PRINCE_LEFT;
+    }
+    if (strcmp(player->role, "Right House") == 0) {
+        return piece->role == CF_ROLE_QUEEN_RIGHT || piece->role == CF_ROLE_PRINCE_RIGHT;
+    }
+    return false;
 }
 
 CfGame *cf_engine_new(const CfConfig *config) {
@@ -386,16 +403,22 @@ int cf_engine_piece_at(const CfGame *game, CfCoord c) {
 
 int cf_engine_generate_moves(CfGame *game, int player_id, CfCoord from, CfMove *moves, int max_moves) {
     int idx;
+    CfMove pseudo[CF_MAX_MOVES];
+    int i, count = 0, pseudo_count;
     char sq[16], fields[512];
     if (!game || player_id < 0 || player_id >= game->player_count) return 0;
+    if (!game->dice_rolled) return 0;
     idx = cf_engine_piece_at(game, from);
-    if (idx < 0 || game->pieces[idx].team != game->players[player_id].team) return 0;
-    idx = cf_movegen_for_piece(game, &game->pieces[idx], moves, max_moves);
+    if (idx < 0 || !cf_engine_player_controls_piece(&game->players[player_id], &game->pieces[idx])) return 0;
+    pseudo_count = cf_movegen_for_piece(game, &game->pieces[idx], pseudo, CF_MAX_MOVES);
+    for (i = 0; i < pseudo_count && count < max_moves; i++) {
+        if (cf_rules_move_preserves_king_safety(game, &pseudo[i])) moves[count++] = pseudo[i];
+    }
     cf_coord_to_string(&game->board, from, sq, sizeof(sq));
     snprintf(fields, sizeof(fields), "\"player_id\":%d,\"square\":\"%s\",\"count\":%d,\"human_readable_summary\":\"Legal moves shown for %s.\"",
-             player_id, sq, idx, sq);
+             player_id, sq, count, sq);
     cf_log_event(game, "legal_moves_generated", fields);
-    return idx;
+    return count;
 }
 
 static void handle_capture(CfGame *g, CfPiece *attacker, CfPiece *target) {
@@ -414,6 +437,13 @@ static void handle_capture(CfGame *g, CfPiece *attacker, CfPiece *target) {
     }
 }
 
+static void log_illegal_move(CfGame *game, const char *reason) {
+    char fields[256];
+    snprintf(fields, sizeof(fields), "\"reason\":\"%s\",\"human_readable_summary\":\"Illegal move: %s.\"",
+             reason ? reason : "unknown", reason ? reason : "unknown");
+    cf_log_event(game, "illegal_move", fields);
+}
+
 bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_size) {
     int idx, cap;
     char a[16], b[16], fields[768];
@@ -421,6 +451,22 @@ bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_s
     idx = cf_engine_piece_at(game, move->from);
     if (idx < 0) {
         snprintf(err, (size_t)err_size, "no piece at source");
+        log_illegal_move(game, "no piece at source");
+        return false;
+    }
+    if (!game->dice_rolled) {
+        snprintf(err, (size_t)err_size, "roll dice before moving");
+        log_illegal_move(game, "roll dice before moving");
+        return false;
+    }
+    if (!cf_engine_player_controls_piece(&game->players[game->current_player], &game->pieces[idx])) {
+        snprintf(err, (size_t)err_size, "piece is not controlled by current player");
+        log_illegal_move(game, "piece is not controlled by current player");
+        return false;
+    }
+    if (!cf_rules_move_preserves_king_safety(game, move)) {
+        snprintf(err, (size_t)err_size, "move leaves king in check");
+        log_illegal_move(game, "move leaves king in check");
         return false;
     }
     cap = cf_engine_piece_at(game, move->to);
@@ -431,6 +477,7 @@ bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_s
     cf_log_event(game, "move_attempt", fields);
     if (cap >= 0 && !cf_rules_can_capture(game, &game->pieces[idx], &game->pieces[cap])) {
         snprintf(err, (size_t)err_size, "capture blocked by royal rule");
+        log_illegal_move(game, "capture blocked by royal rule");
         return false;
     }
     if (cap >= 0) handle_capture(game, &game->pieces[idx], &game->pieces[cap]);
@@ -440,7 +487,18 @@ bool cf_engine_apply_move(CfGame *game, const CfMove *move, char *err, int err_s
     cf_log_event(game, "move_success", fields);
     if (!cf_rules_repetition_legal(game)) {
         snprintf(err, (size_t)err_size, "fourth repetition is illegal");
+        log_illegal_move(game, "fourth repetition is illegal");
         return false;
+    }
+    {
+        int t;
+        for (t = 0; t < game->config.team_count; t++) {
+            if (t != game->pieces[idx].team && cf_rules_team_in_check(game, t)) {
+                snprintf(fields, sizeof(fields), "\"checked_team_id\":%d,\"checked_house_name\":\"%s\",\"human_readable_summary\":\"Check: %s King is in check.\"",
+                         t + 1, game->houses[t].house_name, game->houses[t].house_name);
+                cf_log_event(game, "check", fields);
+            }
+        }
     }
     game->turn_id++;
     cf_engine_snapshot(game, "logs/snapshots/latest.json");
