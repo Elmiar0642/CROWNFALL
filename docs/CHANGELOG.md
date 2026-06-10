@@ -74,3 +74,31 @@ Created `crownfall_engine` as a C11/Makefile project.
   - Team and player registration events are emitted for both GUI and CLI sessions.
 - `README.md:5:1`
   - Documented default GUI launch, explicit CLI launch, GTK build requirement, and richer log metadata.
+
+## 2026-06-09 Canonical Court Placement and DrawingArea GUI
+
+### Changed Files
+
+- `src/engine.c:63:1`
+  - Replaced horizontal-only team setup with a canonical legion template.
+  - 2-team mode now uses the exact 9x9 South/North ranks.
+  - 4-team mode rotates the legion into South, East, North, and West court arms.
+  - 8-team mode repeats the 4-team placement on L1 for Teams 1-4 and L2 for Teams 5-8.
+- `src/gui.c:1:1`
+  - Replaced text-board GUI rendering with GTK `DrawingArea` rendering.
+  - GUI now draws valid squares, invalid 3x3 corner holes, court zones, coordinates, pieces, selection, legal moves, and last move.
+  - Added mouse selection and click-to-move.
+  - Added dice warning before sliding moves when dice have not been rolled.
+  - Added default names, deterministic random names, live side log, and Help content.
+- `ui/crownfall.glade:1:1`
+  - Rebuilt GUI layout around setup controls, two side-by-side layer drawing areas, right-side log pane, and Help tab.
+- `src/board.c:49:1`, `src/board.h:30:1`
+  - Added named board geometry helper wrappers: `board_init_2team`, `board_init_4team`, `board_init_8team`, `board_is_valid_square`, and `board_rotate_template`.
+- `include/crownfall_api.h:10:1`, `src/api.c:11:1`
+  - Added future-agent JSON API spellings: `cf_get_state_json`, `cf_get_legal_moves_json`, and `cf_branch_from_turn`.
+- `src/cli.c:129:1`
+  - Added stdin protocol support for `BRANCH <turn_id>`.
+- `README.md:1:1`
+  - Documented corrected court placement, DrawingArea GUI, mouse movement, side pane, name helpers, and updated agent protocol.
+- `ui/crownfall.glade:137:19`, `src/gui.c:445:9`
+  - Fixed collapsed board rendering by replacing the board/log `GtkPaned` with a horizontal box and giving both layer DrawingAreas stable 520x520 minimum sizes.

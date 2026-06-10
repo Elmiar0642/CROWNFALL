@@ -141,6 +141,10 @@ int cf_agent_stdin_run(CfGame *game) {
             printf("MOVE protocol accepted as textual stub; use CLI move for now.\n");
         } else if (strncmp(line, "APPLY ", 6) == 0) {
             printf("APPLY move_json stub\n");
+        } else if (strncmp(line, "BRANCH ", 7) == 0) {
+            char path[256];
+            if (cf_engine_branch(game, atoi(line + 7), path, sizeof(path))) printf("%s\n", path);
+            else printf("BRANCH disabled\n");
         }
         fflush(stdout);
     }

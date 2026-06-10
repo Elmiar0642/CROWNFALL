@@ -46,6 +46,44 @@ void cf_board_init(CfBoard *board, int team_count) {
     }
 }
 
+void board_init_2team(CfBoard *board) {
+    cf_board_init(board, 2);
+}
+
+void board_init_4team(CfBoard *board) {
+    cf_board_init(board, 4);
+}
+
+void board_init_8team(CfBoard *board) {
+    cf_board_init(board, 8);
+}
+
+bool board_is_valid_square(const CfBoard *board, CfCoord c) {
+    return cf_board_is_playable(board, c);
+}
+
+void board_rotate_template(int court_direction, int col, int row, int *x, int *y) {
+    if (!x || !y) return;
+    switch (court_direction) {
+        case 1:
+            *x = 14 - row;
+            *y = 3 + col;
+            break;
+        case 2:
+            *x = 3 + col;
+            *y = 14 - row;
+            break;
+        case 3:
+            *x = row;
+            *y = 3 + col;
+            break;
+        default:
+            *x = 3 + col;
+            *y = row;
+            break;
+    }
+}
+
 bool cf_board_is_playable(const CfBoard *board, CfCoord c) {
     if (!board || c.layer < 0 || c.layer >= board->layers) return false;
     if (c.x < 0 || c.x >= board->size || c.y < 0 || c.y >= board->size) return false;

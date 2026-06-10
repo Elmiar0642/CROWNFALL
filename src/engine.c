@@ -60,43 +60,88 @@ static void setup_players(CfGame *g) {
     }
 }
 
-static void setup_team(CfGame *g, int team, int layer, int base_y) {
-    int dir = base_y < g->board.size / 2 ? 1 : -1;
-    int back = base_y;
-    int pawns = base_y + dir;
-    int cx = g->board.size / 2;
-    add_piece(g, team, CF_PIECE_ROOK, "R1", layer, cx - 4, back);
-    add_piece(g, team, CF_PIECE_KNIGHT, "N1", layer, cx - 3, back);
-    add_piece(g, team, CF_PIECE_BISHOP, "B1", layer, cx - 2, back);
-    add_piece(g, team, CF_PIECE_QUEEN, "Q1", layer, cx - 1, back);
-    add_piece(g, team, CF_PIECE_KING, "K", layer, cx, back);
-    add_piece(g, team, CF_PIECE_QUEEN, "Q2", layer, cx + 1, back);
-    add_piece(g, team, CF_PIECE_BISHOP, "B2", layer, cx + 2, back);
-    add_piece(g, team, CF_PIECE_KNIGHT, "N2", layer, cx + 3, back);
-    add_piece(g, team, CF_PIECE_ROOK, "R2", layer, cx + 4, back);
-    add_piece(g, team, CF_PIECE_PRINCE, "P1", layer, cx - 1, pawns);
-    add_piece(g, team, CF_PIECE_LOVE, "L", layer, cx, pawns);
-    add_piece(g, team, CF_PIECE_PRINCE, "P2", layer, cx + 1, pawns);
-    add_piece(g, team, CF_PIECE_PAWN, "p1", layer, cx - 3, pawns);
-    add_piece(g, team, CF_PIECE_PAWN, "p2", layer, cx - 2, pawns);
-    add_piece(g, team, CF_PIECE_PAWN, "p3", layer, cx - 1, pawns + dir);
-    add_piece(g, team, CF_PIECE_PAWN, "p4", layer, cx + 1, pawns + dir);
-    add_piece(g, team, CF_PIECE_PAWN, "p5", layer, cx + 2, pawns);
-    add_piece(g, team, CF_PIECE_PAWN, "p6", layer, cx + 3, pawns);
+typedef enum {
+    CF_COURT_SOUTH,
+    CF_COURT_EAST,
+    CF_COURT_NORTH,
+    CF_COURT_WEST
+} CfCourtDirection;
+
+typedef struct {
+    CfPieceType type;
+    const char *label;
+    int col;
+    int row;
+} CfTemplatePiece;
+
+static const CfTemplatePiece LEGION_TEMPLATE[] = {
+    {CF_PIECE_ROOK, "R1", 0, 0}, {CF_PIECE_KNIGHT, "N1", 1, 0},
+    {CF_PIECE_BISHOP, "B1", 2, 0}, {CF_PIECE_QUEEN, "QL", 3, 0},
+    {CF_PIECE_KING, "K", 4, 0}, {CF_PIECE_QUEEN, "QR", 5, 0},
+    {CF_PIECE_BISHOP, "B2", 6, 0}, {CF_PIECE_KNIGHT, "N2", 7, 0},
+    {CF_PIECE_ROOK, "R2", 8, 0},
+    {CF_PIECE_PAWN, "p1", 1, 1}, {CF_PIECE_PAWN, "p2", 2, 1},
+    {CF_PIECE_PRINCE, "PL", 3, 1}, {CF_PIECE_LOVE, "L", 4, 1},
+    {CF_PIECE_PRINCE, "PR", 5, 1}, {CF_PIECE_PAWN, "p5", 6, 1},
+    {CF_PIECE_PAWN, "p6", 7, 1},
+    {CF_PIECE_PAWN, "p3", 3, 2}, {CF_PIECE_PAWN, "p4", 5, 2}
+};
+
+static void rotate_template_coord(CfCourtDirection court, int col, int row, int *x, int *y) {
+    switch (court) {
+        case CF_COURT_SOUTH:
+            *x = 3 + col;
+            *y = row;
+            break;
+        case CF_COURT_NORTH:
+            *x = 3 + col;
+            *y = 14 - row;
+            break;
+        case CF_COURT_EAST:
+            *x = 14 - row;
+            *y = 3 + col;
+            break;
+        case CF_COURT_WEST:
+            *x = row;
+            *y = 3 + col;
+            break;
+    }
+}
+
+static void setup_team_2(CfGame *g, int team, int layer, int back_y) {
+    int i;
+    int forward = back_y == 0 ? 1 : -1;
+    for (i = 0; i < (int)(sizeof(LEGION_TEMPLATE) / sizeof(LEGION_TEMPLATE[0])); i++) {
+        int x = LEGION_TEMPLATE[i].col;
+        int y = back_y + LEGION_TEMPLATE[i].row * forward;
+        add_piece(g, team, LEGION_TEMPLATE[i].type, LEGION_TEMPLATE[i].label, layer, x, y);
+    }
+}
+
+static void board_place_legion(CfGame *g, int team, int layer, CfCourtDirection court) {
+    int i;
+    for (i = 0; i < (int)(sizeof(LEGION_TEMPLATE) / sizeof(LEGION_TEMPLATE[0])); i++) {
+        int x = 0, y = 0;
+        rotate_template_coord(court, LEGION_TEMPLATE[i].col, LEGION_TEMPLATE[i].row, &x, &y);
+        add_piece(g, team, LEGION_TEMPLATE[i].type, LEGION_TEMPLATE[i].label, layer, x, y);
+    }
 }
 
 static void setup_pieces(CfGame *g) {
-    setup_team(g, 0, 0, 0);
-    setup_team(g, 1, 0, g->board.size - 1);
-    if (g->config.team_count >= 4) {
-        setup_team(g, 2, 0, 3);
-        setup_team(g, 3, 0, g->board.size - 4);
+    if (g->config.team_count == 2) {
+        setup_team_2(g, 0, 0, 0);
+        setup_team_2(g, 1, 0, 8);
+        return;
     }
+    board_place_legion(g, 0, 0, CF_COURT_SOUTH);
+    board_place_legion(g, 1, 0, CF_COURT_EAST);
+    board_place_legion(g, 2, 0, CF_COURT_NORTH);
+    board_place_legion(g, 3, 0, CF_COURT_WEST);
     if (g->config.team_count == 8) {
-        setup_team(g, 4, 1, 0);
-        setup_team(g, 5, 1, g->board.size - 1);
-        setup_team(g, 6, 1, 3);
-        setup_team(g, 7, 1, g->board.size - 4);
+        board_place_legion(g, 4, 1, CF_COURT_SOUTH);
+        board_place_legion(g, 5, 1, CF_COURT_EAST);
+        board_place_legion(g, 6, 1, CF_COURT_NORTH);
+        board_place_legion(g, 7, 1, CF_COURT_WEST);
     }
 }
 

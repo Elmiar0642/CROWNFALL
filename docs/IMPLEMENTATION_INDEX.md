@@ -8,14 +8,17 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 - `src/main.c:19:1` - default startup routes to GUI; `--cli` routes to console setup.
 - `src/cli.c:27:1` - `cf_prompt_config` asks for mode, team count, time travel, team names, and player names.
 - `src/cli.c:68:1` - `cf_cli_run` implements text/notation commands.
-- `src/gui.c:95:1` - GUI Start Session handler builds config and creates the game.
-- `src/gui.c:199:1` - GTK3 GUI entry loads Glade and connects controls.
-- `src/gui.c:258:1` - no-GTK fallback message when GTK3 headers/libs are unavailable.
+- `src/gui.c:38:1` - default and deterministic random name support.
+- `src/gui.c:87:1` - GUI setup helpers copy names into config safely.
+- `src/gui.c:182:1` - DrawingArea renderer draws canonical engine board state.
+- `src/gui.c:279:1` - mouse click handler selects pieces, highlights legal moves, and applies moves.
+- `src/gui.c:404:1` - GTK3 GUI entry loads Glade and connects controls.
 
 ## Board and Coordinates
 
 - `src/board.c:19:1` - `cf_board_init` creates 2-team, 4-team, 6-team WIP, and 8-team layouts.
-- `src/board.c:49:1` - `cf_board_is_playable` rejects out-of-bounds and removed cross-board corners.
+- `src/board.c:49:1` - named board init wrappers expose 2-team, 4-team, and 8-team geometry.
+- `src/board.c:87:1` - `cf_board_is_playable` rejects out-of-bounds and removed cross-board corners.
 - `src/board.c:55:1` - `cf_parse_coord` supports `a1` and layered `L1:a1` notation.
 - `src/board.c:78:1` - `cf_coord_to_string` serializes coordinates.
 - `src/board.c:87:1` - `cf_board_playable_count` confirms 81, 189, and 378-square layouts.
@@ -35,7 +38,9 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 
 - `src/engine.c:26:1` - `add_piece` creates a piece safely.
 - `src/engine.c:43:1` - `setup_players` creates King, Left House, Right House per team.
-- `src/engine.c:63:1` - `setup_team` places K, Q1/Q2, P1/P2, L, R, N, B, and p1-p6.
+- `src/engine.c:77:1` - canonical legion template defines K, QL/QR, PL/PR, L, R, N, B, and p1-p6.
+- `src/engine.c:90:1` - court rotation maps legion template into South, East, North, and West arms.
+- `src/engine.c:130:1` - `setup_pieces` places 2-team, 4-team, and 8-team legions on the canonical board.
 - `src/movegen.c:9:1` - `add_move` validates destination and capture.
 - `src/movegen.c:27:1` - `slide` applies dice-sum range limits.
 - `src/movegen.c:52:1` - `cf_movegen_for_piece` implements King, Queen, Rook, Bishop, Knight, Prince, Love Interest, and Pawn movement.
@@ -66,6 +71,8 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 - `include/crownfall_api.h:10:1` - public API begins.
 - `src/api.c:9:1` - public API implementation begins.
 - `src/cli.c:129:1` - simple stdin protocol begins.
+- `src/cli.c:144:1` - stdin protocol supports `BRANCH <turn_id>`.
+- `include/crownfall_api.h:13:1` - JSON state and legal move API spellings begin.
 
 ## GUI and Glade
 
@@ -74,10 +81,14 @@ Generated for the initial scaffold on 2026-06-09. Column anchors use `:1` unless
 - `ui/crownfall.glade:29:19` - team count selector.
 - `ui/crownfall.glade:36:19` - time-travel check button.
 - `ui/crownfall.glade:87:19` - Start Session button.
-- `ui/crownfall.glade:95:15` - board tab.
-- `ui/crownfall.glade:104:35` - Roll Dice button.
-- `ui/crownfall.glade:107:35` - Legal Moves button.
-- `ui/crownfall.glade:108:35` - Move button.
-- `ui/crownfall.glade:110:35` - Branch button.
-- `ui/crownfall.glade:121:44` - board text view.
-- `ui/crownfall.glade:128:44` - session log panel.
+- `ui/crownfall.glade:41:19` - team count selector.
+- `ui/crownfall.glade:102:19` - Randomize All Names button.
+- `ui/crownfall.glade:108:19` - Use Default Names button.
+- `ui/crownfall.glade:114:19` - Continue button.
+- `ui/crownfall.glade:122:15` - board tab.
+- `ui/crownfall.glade:133:35` - Roll Dice button.
+- `ui/crownfall.glade:134:35` - Branch From Turn button.
+- `ui/crownfall.glade:152:51` - Layer L1 DrawingArea.
+- `ui/crownfall.glade:160:51` - Layer L2 DrawingArea.
+- `ui/crownfall.glade:170:44` - side log pane.
+- `ui/crownfall.glade:180:44` - Help tab text view.

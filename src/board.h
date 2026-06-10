@@ -28,6 +28,11 @@ typedef struct {
 } CfCoord;
 
 void cf_board_init(CfBoard *board, int team_count);
+void board_init_2team(CfBoard *board);
+void board_init_4team(CfBoard *board);
+void board_init_8team(CfBoard *board);
+bool board_is_valid_square(const CfBoard *board, CfCoord c);
+void board_rotate_template(int court_direction, int col, int row, int *x, int *y);
 bool cf_board_is_playable(const CfBoard *board, CfCoord c);
 bool cf_parse_coord(const CfBoard *board, const char *text, CfCoord *out);
 void cf_coord_to_string(const CfBoard *board, CfCoord c, char *out, int out_size);

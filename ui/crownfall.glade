@@ -3,8 +3,8 @@
   <requires lib="gtk+" version="3.20"/>
   <object class="GtkWindow" id="main_window">
     <property name="title">CrownFall: Dice Court</property>
-    <property name="default-width">1120</property>
-    <property name="default-height">780</property>
+    <property name="default-width">1320</property>
+    <property name="default-height">860</property>
     <child>
       <object class="GtkBox" id="root_box">
         <property name="orientation">vertical</property>
@@ -19,11 +19,27 @@
                 <property name="hexpand">true</property>
                 <property name="vexpand">true</property>
                 <child>
+                  <object class="GtkLabel" id="mode_label">
+                    <property name="label">Mode</property>
+                    <property name="halign">start</property>
+                  </object>
+                  <packing><property name="left-attach">0</property><property name="top-attach">0</property></packing>
+                </child>
+                <child>
+                  <object class="GtkComboBoxText" id="mode_combo">
+                    <items>
+                      <item id="gui">GUI</item>
+                      <item id="notation">Notation</item>
+                    </items>
+                  </object>
+                  <packing><property name="left-attach">1</property><property name="top-attach">0</property></packing>
+                </child>
+                <child>
                   <object class="GtkLabel" id="team_count_label">
                     <property name="label">Teams</property>
                     <property name="halign">start</property>
                   </object>
-                  <packing><property name="left-attach">0</property><property name="top-attach">0</property></packing>
+                  <packing><property name="left-attach">2</property><property name="top-attach">0</property></packing>
                 </child>
                 <child>
                   <object class="GtkComboBoxText" id="team_count_combo">
@@ -34,13 +50,13 @@
                       <item id="8">8</item>
                     </items>
                   </object>
-                  <packing><property name="left-attach">1</property><property name="top-attach">0</property></packing>
+                  <packing><property name="left-attach">3</property><property name="top-attach">0</property></packing>
                 </child>
                 <child>
                   <object class="GtkCheckButton" id="time_travel_check">
                     <property name="label">Time travel</property>
                   </object>
-                  <packing><property name="left-attach">2</property><property name="top-attach">0</property></packing>
+                  <packing><property name="left-attach">4</property><property name="top-attach">0</property></packing>
                 </child>
                 <child>
                   <object class="GtkLabel" id="team_names_label">
@@ -64,7 +80,7 @@
                 </child>
                 <child>
                   <object class="GtkLabel" id="player_names_label">
-                    <property name="label">Player names</property>
+                    <property name="label">Player names: King, Left House, Right House per team</property>
                     <property name="halign">start</property>
                   </object>
                   <packing><property name="left-attach">3</property><property name="top-attach">1</property></packing>
@@ -83,10 +99,22 @@
                   <packing><property name="left-attach">3</property><property name="top-attach">2</property><property name="width">3</property></packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="start_button">
-                    <property name="label">Start Session</property>
+                  <object class="GtkButton" id="random_names_button">
+                    <property name="label">Randomize All Names</property>
                   </object>
                   <packing><property name="left-attach">0</property><property name="top-attach">3</property></packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="default_names_button">
+                    <property name="label">Use Default Names</property>
+                  </object>
+                  <packing><property name="left-attach">1</property><property name="top-attach">3</property></packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="start_button">
+                    <property name="label">Continue</property>
+                  </object>
+                  <packing><property name="left-attach">2</property><property name="top-attach">3</property></packing>
                 </child>
               </object>
               <packing><property name="tab-label">Setup</property></packing>
@@ -97,33 +125,49 @@
                 <property name="spacing">8</property>
                 <child><object class="GtkLabel" id="turn_label"><property name="label">Turn</property><property name="halign">start</property></object></child>
                 <child><object class="GtkLabel" id="dice_label"><property name="label">Dice</property><property name="halign">start</property></object></child>
+                <child><object class="GtkLabel" id="status_label"><property name="label">Ready</property><property name="halign">start</property></object></child>
                 <child>
                   <object class="GtkBox" id="toolbar_box">
                     <property name="orientation">horizontal</property>
                     <property name="spacing">6</property>
                     <child><object class="GtkButton" id="roll_button"><property name="label">Roll Dice</property></object></child>
-                    <child><object class="GtkEntry" id="from_entry"><property name="placeholder-text">from</property></object></child>
-                    <child><object class="GtkEntry" id="to_entry"><property name="placeholder-text">to</property></object></child>
-                    <child><object class="GtkButton" id="legal_button"><property name="label">Legal Moves</property></object></child>
-                    <child><object class="GtkButton" id="move_button"><property name="label">Move</property></object></child>
-                    <child><object class="GtkEntry" id="branch_entry"><property name="placeholder-text">turn</property></object></child>
-                    <child><object class="GtkButton" id="branch_button"><property name="label">Branch</property></object></child>
+                    <child><object class="GtkButton" id="branch_button"><property name="label">Branch From Turn</property></object></child>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkPaned" id="play_pane">
+                  <object class="GtkBox" id="main_pane">
                     <property name="orientation">horizontal</property>
+                    <property name="spacing">10</property>
                     <property name="vexpand">true</property>
+                    <property name="hexpand">true</property>
                     <child>
-                      <object class="GtkScrolledWindow" id="board_scroll">
+                      <object class="GtkBox" id="layers_box">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">10</property>
                         <property name="hexpand">true</property>
                         <property name="vexpand">true</property>
-                        <child><object class="GtkTextView" id="board_view"><property name="editable">false</property><property name="monospace">true</property></object></child>
+                        <child>
+                          <object class="GtkBox" id="layer1_box">
+                            <property name="orientation">vertical</property>
+                            <property name="hexpand">true</property>
+                            <property name="vexpand">true</property>
+                            <child><object class="GtkDrawingArea" id="layer1_area"><property name="width-request">520</property><property name="height-request">520</property><property name="hexpand">true</property><property name="vexpand">true</property></object></child>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkBox" id="layer2_box">
+                            <property name="orientation">vertical</property>
+                            <property name="hexpand">true</property>
+                            <property name="vexpand">true</property>
+                            <child><object class="GtkDrawingArea" id="layer2_area"><property name="width-request">520</property><property name="height-request">520</property><property name="hexpand">true</property><property name="vexpand">true</property></object></child>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child>
                       <object class="GtkScrolledWindow" id="log_scroll">
-                        <property name="hexpand">true</property>
+                        <property name="width-request">320</property>
+                        <property name="hexpand">false</property>
                         <property name="vexpand">true</property>
                         <child><object class="GtkTextView" id="log_view"><property name="editable">false</property><property name="monospace">true</property></object></child>
                       </object>
@@ -134,11 +178,11 @@
               <packing><property name="tab-label">Board</property></packing>
             </child>
             <child>
-              <object class="GtkLabel" id="rules_label">
-                <property name="label">CrownFall: Dice Court rules</property>
-                <property name="wrap">true</property>
+              <object class="GtkScrolledWindow" id="help_scroll">
+                <property name="vexpand">true</property>
+                <child><object class="GtkTextView" id="help_view"><property name="editable">false</property><property name="wrap-mode">word</property></object></child>
               </object>
-              <packing><property name="tab-label">Rules</property></packing>
+              <packing><property name="tab-label">Help</property></packing>
             </child>
           </object>
         </child>
