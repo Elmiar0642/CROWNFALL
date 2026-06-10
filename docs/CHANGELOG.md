@@ -121,3 +121,12 @@ Created `crownfall_engine` as a C11/Makefile project.
   - JSONL events now include `event_type`, timestamp, current House, player role, player name, dice fields, and human-readable summaries without duplicate JSON keys.
 - `src/api.c:8:1`, `include/crownfall_api.h:10:1`
   - Agent state JSON now exposes House metadata and piece identities.
+
+## 2026-06-10 Legion Pawn File Placement Fix
+
+### Changed Files
+
+- `src/engine.c:254:1`
+  - Corrected the shared legion template so `p1`, `p2`, and `p3` stand directly in front of `RL`, `NL`, and `BL`.
+  - Corrected `p4`, `p5`, and `p6` so they stand directly in front of `BR`, `NR`, and `RR`.
+  - The fix applies to all generated legions: 2-House, 4-House, and both 8-House layers because GUI and CLI render from the same engine board.
