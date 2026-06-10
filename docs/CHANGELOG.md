@@ -130,3 +130,14 @@ Created `crownfall_engine` as a C11/Makefile project.
   - Corrected the shared legion template so `p1`, `p2`, and `p3` stand directly in front of `RL`, `NL`, and `BL`.
   - Corrected `p4`, `p5`, and `p6` so they stand directly in front of `BR`, `NR`, and `RR`.
   - The fix applies to all generated legions: 2-House, 4-House, and both 8-House layers because GUI and CLI render from the same engine board.
+
+## 2026-06-10 v0.3.0 Source Release Packaging
+
+### Changed Files
+
+- `VERSION:1:1`
+  - Added project version `0.3.0`.
+- `.gitignore:1:1`
+  - Keeps build artifacts, including `bin/crownfall`, ignored because the remote LFS budget is exhausted.
+- `docs/RELEASE_NOTES_v0.3.0.md:1:1`
+  - Added release notes, included features, source-build binary note, and known remaining GUI issues.
